@@ -13,7 +13,8 @@ constexpr uint8_t kSectionCount = 5;
 constexpr uint8_t kSectionWidth = 3;
 constexpr uint8_t kSectionGap = 2;
 constexpr uint8_t kCentralRow = 2;
-constexpr uint16_t kSectionColor = 0x07E0;
+constexpr uint16_t kGreen = 0x07E0;
+constexpr uint16_t kYellow = 0xFFE0;
 
 constexpr uint16_t kMinTestRpm = 3000;
 constexpr uint16_t kMaxTestRpm = 7000;
@@ -101,12 +102,13 @@ void renderShiftlight(uint8_t activeSections) {
 
   for (uint8_t section = 0; section < activeSections; ++section) {
     const uint8_t globalX = section * (kSectionWidth + kSectionGap);
+    const uint16_t color = section < 3 ? kGreen : kYellow;
 
     for (uint8_t y = kCentralRow; y < kCentralRow + kSectionWidth; ++y) {
       for (uint8_t x = globalX; x < globalX + kSectionWidth; ++x) {
         const uint8_t matrix = x / 8;
         const uint8_t localX = x % 8;
-        frames[matrix][y * 8 + localX] = kSectionColor;
+        frames[matrix][y * 8 + localX] = color;
       }
     }
   }
@@ -128,7 +130,7 @@ void renderScreen(uint16_t currentRpm, uint8_t activeSections) {
   M5.Display.setTextColor(TFT_WHITE, TFT_BLACK);
   M5.Display.setTextSize(3);
   M5.Display.drawString(rpmText, M5.Display.width() / 2, 48);
-  M5.Display.setTextColor(kSectionColor, TFT_BLACK);
+  M5.Display.setTextColor(kGreen, TFT_BLACK);
   M5.Display.setTextSize(1);
   M5.Display.drawString("RPM", M5.Display.width() / 2, 82);
   M5.Display.drawString(sectionsText, M5.Display.width() / 2, 106);

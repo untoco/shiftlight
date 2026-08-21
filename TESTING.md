@@ -31,9 +31,10 @@ passed to each command: it can change when the USB cable or port changes.
 
 - AtomS3R displays a large test RPM value cycling from 3000 to 7000 and back
   in 100 RPM steps, plus `SECTIONS n/5` below it.
-- A green 3×3 section is lit in central rows 2–4 for every reached threshold:
-  4000, 4500, 5000, 5500 and 6000 RPM. The five sections start at global
-  horizontal positions 0, 5, 10, 15 and 20, so the gap between them is two pixels.
+- A 3×3 section is lit in central rows 2–4 for every reached threshold: 4000,
+  4500, 5000, 5500 and 6000 RPM. Sections 1–3 are green; sections 4–5 are
+  yellow. The five sections start at global horizontal positions 0, 5, 10, 15
+  and 20, so the gap between them is two pixels.
 - The serial monitor reports the three discovered Chain devices and the current
   test RPM/section count.
 
