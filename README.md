@@ -76,6 +76,49 @@ Atomic CAN Base и ведёт цепочку индикаторов через �
 | 1 | M5Stack Unbuckled Grove Cable, 0.5 м | Съёмный кабель AtomS3R → первая Chain RGB. |
 | 5 | Chain Bridge | Входит в комплекты Chain RGB и соединяет соседние секции. |
 
+## Разработка и прошивка
+
+Прошивка — стандартный Arduino C++ для ESP32-S3. Для сборки используется
+PlatformIO Core в командной строке: отдельная IDE, M5Burner или иное
+графическое приложение не нужны. Такой проект одинаково собирается на macOS,
+Linux и Windows.
+
+### Первичная настройка
+
+В корне проекта создаётся изолированное окружение, поэтому PlatformIO и его
+зависимости не меняют системный Python или настройки macOS:
+
+```bash
+cd /путь/к/shiftlight
+python3 -m venv .tooling/platformio
+.tooling/platformio/bin/python -m pip install platformio
+```
+
+При первой сборке PlatformIO сам загрузит компилятор ESP32-S3, Arduino
+framework и библиотеки M5Stack. На Windows путь к программам окружения будет
+`.tooling\platformio\Scripts\` вместо `.tooling/platformio/bin/`.
+
+### Сборка и загрузка
+
+```bash
+# Собрать прошивку
+.tooling/platformio/bin/pio run
+
+# Найти имя подключённого USB-порта
+.tooling/platformio/bin/pio device list
+
+# Записать прошивку в AtomS3R
+.tooling/platformio/bin/pio run --target upload --upload-port /dev/cu.usbmodem101
+
+# Открыть диагностический вывод; выход — Ctrl+C
+.tooling/platformio/bin/pio device monitor --port /dev/cu.usbmodem101 --baud 115200
+```
+
+`/dev/cu.usbmodem101` — пример имени порта на текущем Mac; оно может меняться
+после переподключения кабеля. Настройки платы и зависимостей хранятся в
+[`platformio.ini`](platformio.ini), а первый безопасный тест одной Chain RGB —
+в [`src/main.cpp`](src/main.cpp) и [`TESTING.md`](TESTING.md).
+
 ## Распределение интерфейсов AtomS3R
 
 | Интерфейс | Линии AtomS3R | Подключение |
