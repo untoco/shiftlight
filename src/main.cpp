@@ -15,17 +15,22 @@ constexpr uint8_t kSectionGap = 2;
 constexpr uint8_t kCentralRow = 2;
 constexpr uint16_t kGreen = 0x07E0;
 constexpr uint16_t kYellow = 0xFFE0;
+constexpr uint16_t kRed = 0xF800;
 
 constexpr uint16_t kMinTestRpm = 3000;
 constexpr uint16_t kMaxTestRpm = 7000;
 constexpr uint16_t kRpmStep = 100;
 constexpr uint32_t kRpmStepMs = 150;
+constexpr uint8_t kPeakHoldSteps = 7;
+constexpr uint32_t kRedFlashHalfPeriodMs = 75;
 
 Chain chain;
 uint8_t rgbDeviceIds[kMatrixCount] = {};
 uint8_t operationStatus = 0;
 uint16_t rpm = kMinTestRpm;
 int8_t rpmDirection = 1;
+uint8_t peakHoldSteps = 0;
+uint32_t lastRedFlashMs = 0;
 uint32_t lastRpmStepMs = 0;
 
 void showFatal(const char* detail) {
@@ -97,12 +102,26 @@ uint8_t activeSectionsForRpm(uint16_t currentRpm) {
   return sections > kSectionCount ? kSectionCount : sections;
 }
 
-void renderShiftlight(uint8_t activeSections) {
+void renderShiftlight(uint16_t currentRpm, uint8_t activeSections) {
   uint16_t frames[kMatrixCount][64] = {};
 
+  if (currentRpm >= kMaxTestRpm) {
+    const bool flashOn = (millis() / kRedFlashHalfPeriodMs) % 2 == 0;
+    if (flashOn) {
+      for (auto& frame : frames) {
+        for (auto& pixel : frame) {
+          pixel = kRed;
+        }
+      }
+    }
+  }
+
   for (uint8_t section = 0; section < activeSections; ++section) {
+    if (currentRpm >= kMaxTestRpm) {
+      break;
+    }
     const uint8_t globalX = section * (kSectionWidth + kSectionGap);
-    const uint16_t color = section < 3 ? kGreen : kYellow;
+    const uint16_t color = currentRpm >= 6500 ? kRed : (section < 3 ? kGreen : kYellow);
 
     for (uint8_t y = kCentralRow; y < kCentralRow + kSectionWidth; ++y) {
       for (uint8_t x = globalX; x < globalX + kSectionWidth; ++x) {
@@ -130,21 +149,28 @@ void renderScreen(uint16_t currentRpm, uint8_t activeSections) {
   M5.Display.setTextColor(TFT_WHITE, TFT_BLACK);
   M5.Display.setTextSize(3);
   M5.Display.drawString(rpmText, M5.Display.width() / 2, 48);
-  M5.Display.setTextColor(kGreen, TFT_BLACK);
+  const bool redline = currentRpm >= kMaxTestRpm;
+  const bool allRed = currentRpm >= 6500;
+  M5.Display.setTextColor(redline || allRed ? kRed : kGreen, TFT_BLACK);
   M5.Display.setTextSize(1);
   M5.Display.drawString("RPM", M5.Display.width() / 2, 82);
-  M5.Display.drawString(sectionsText, M5.Display.width() / 2, 106);
+  M5.Display.drawString(redline ? "REDLINE FLASH" : (allRed ? "ALL RED" : sectionsText),
+                        M5.Display.width() / 2, 106);
 }
 
 void updateVisualisation() {
   const uint8_t activeSections = activeSectionsForRpm(rpm);
-  renderShiftlight(activeSections);
+  renderShiftlight(rpm, activeSections);
   renderScreen(rpm, activeSections);
   Serial.printf("RPM=%u, sections=%u/%u\n", rpm, activeSections, kSectionCount);
 }
 
 void advanceRpm() {
   if (rpm == kMaxTestRpm) {
+    if (peakHoldSteps++ < kPeakHoldSteps) {
+      return;
+    }
+    peakHoldSteps = 0;
     rpmDirection = -1;
   } else if (rpm == kMinTestRpm) {
     rpmDirection = 1;
@@ -175,11 +201,17 @@ void setup() {
   }
 
   updateVisualisation();
+  lastRedFlashMs = millis();
   lastRpmStepMs = millis();
 }
 
 void loop() {
   const uint32_t now = millis();
+  if (rpm >= kMaxTestRpm && now - lastRedFlashMs >= kRedFlashHalfPeriodMs) {
+    updateVisualisation();
+    lastRedFlashMs = now;
+  }
+
   if (now - lastRpmStepMs < kRpmStepMs) {
     return;
   }

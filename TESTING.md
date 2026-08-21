@@ -35,6 +35,9 @@ passed to each command: it can change when the USB cable or port changes.
   4500, 5000, 5500 and 6000 RPM. Sections 1–3 are green; sections 4–5 are
   yellow. The five sections start at global horizontal positions 0, 5, 10, 15
   and 20, so the gap between them is two pixels.
+- From 6500 RPM all five 3×3 sections are red. At 7000 RPM the test pauses
+  briefly and all three matrices flash red rapidly; the display shows
+  `REDLINE FLASH`.
 - The serial monitor reports the three discovered Chain devices and the current
   test RPM/section count.
 
