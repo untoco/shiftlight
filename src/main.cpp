@@ -30,6 +30,8 @@ uint8_t operationStatus = 0;
 uint16_t rpm = kMinTestRpm;
 int8_t rpmDirection = 1;
 uint8_t peakHoldSteps = 0;
+bool redlineModeActive = false;
+bool redlineFlashOn = false;
 uint32_t lastRedFlashMs = 0;
 uint32_t lastRpmStepMs = 0;
 
@@ -102,24 +104,51 @@ uint8_t activeSectionsForRpm(uint16_t currentRpm) {
   return sections > kSectionCount ? kSectionCount : sections;
 }
 
-void renderShiftlight(uint16_t currentRpm, uint8_t activeSections) {
-  uint16_t frames[kMatrixCount][64] = {};
+void sendFrames(uint16_t (&frames)[kMatrixCount][64]) {
+  for (uint8_t matrix = 0; matrix < kMatrixCount; ++matrix) {
+    chain.setRGBBufferRefresh(rgbDeviceIds[matrix], frames[matrix], &operationStatus);
+  }
+}
 
-  if (currentRpm >= kMaxTestRpm) {
-    const bool flashOn = (millis() / kRedFlashHalfPeriodMs) % 2 == 0;
-    if (flashOn) {
-      for (auto& frame : frames) {
-        for (auto& pixel : frame) {
-          pixel = kRed;
-        }
+void setAllBrightness(uint8_t brightness) {
+  for (uint8_t matrix = 0; matrix < kMatrixCount; ++matrix) {
+    chain.setRGBBrightness(rgbDeviceIds[matrix], brightness, &operationStatus);
+  }
+}
+
+void renderRedline(bool flashOn) {
+  if (!redlineModeActive) {
+    uint16_t redFrames[kMatrixCount][64];
+    for (auto& frame : redFrames) {
+      for (auto& pixel : frame) {
+        pixel = kRed;
       }
     }
+    sendFrames(redFrames);
+    redlineModeActive = true;
+    redlineFlashOn = true;
   }
 
+  if (flashOn != redlineFlashOn) {
+    setAllBrightness(flashOn ? kBrightnessPercent : 0);
+    redlineFlashOn = flashOn;
+  }
+}
+
+void renderShiftlight(uint16_t currentRpm, uint8_t activeSections) {
+  if (currentRpm >= kMaxTestRpm) {
+    renderRedline((millis() / kRedFlashHalfPeriodMs) % 2 == 0);
+    return;
+  }
+
+  if (redlineModeActive) {
+    setAllBrightness(kBrightnessPercent);
+    redlineModeActive = false;
+  }
+
+  uint16_t frames[kMatrixCount][64] = {};
+
   for (uint8_t section = 0; section < activeSections; ++section) {
-    if (currentRpm >= kMaxTestRpm) {
-      break;
-    }
     const uint8_t globalX = section * (kSectionWidth + kSectionGap);
     const uint16_t color = currentRpm >= 6500 ? kRed : (section < 3 ? kGreen : kYellow);
 
@@ -132,9 +161,7 @@ void renderShiftlight(uint16_t currentRpm, uint8_t activeSections) {
     }
   }
 
-  for (uint8_t matrix = 0; matrix < kMatrixCount; ++matrix) {
-    chain.setRGBBufferRefresh(rgbDeviceIds[matrix], frames[matrix], &operationStatus);
-  }
+  sendFrames(frames);
 }
 
 void renderScreen(uint16_t currentRpm, uint8_t activeSections) {

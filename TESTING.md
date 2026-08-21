@@ -37,7 +37,8 @@ passed to each command: it can change when the USB cable or port changes.
   and 20, so the gap between them is two pixels.
 - From 6500 RPM all five 3×3 sections are red. At 7000 RPM the test pauses
   briefly and all three matrices flash red rapidly; the display shows
-  `REDLINE FLASH`.
+  `REDLINE FLASH`. The red frame is loaded once; flashing then switches only
+  matrix brightness, keeping the three matrices visually synchronised.
 - The serial monitor reports the three discovered Chain devices and the current
   test RPM/section count.
 
