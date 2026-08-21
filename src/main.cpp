@@ -20,7 +20,7 @@ constexpr uint16_t kRed = 0xF800;
 constexpr uint16_t kMinTestRpm = 3000;
 constexpr uint16_t kMaxTestRpm = 7000;
 constexpr uint16_t kRpmStep = 100;
-constexpr uint32_t kRpmStepMs = 150;
+constexpr uint32_t kRpmStepMs = 75;
 constexpr uint8_t kPeakHoldSteps = 7;
 constexpr uint32_t kRedFlashHalfPeriodMs = 75;
 
