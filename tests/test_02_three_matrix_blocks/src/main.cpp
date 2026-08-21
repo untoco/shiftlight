@@ -12,8 +12,11 @@ constexpr uint8_t kMatrixCount = 3;
 constexpr uint8_t kSectionSize = 4;
 constexpr uint8_t kSectionStart = 2;
 constexpr uint16_t kGreen = 0x07E0;
+constexpr uint16_t kGreenCorner = 0x03E0;
 constexpr uint16_t kYellow = 0xFFE0;
+constexpr uint16_t kYellowCorner = 0x7BE0;
 constexpr uint16_t kRed = 0xF800;
+constexpr uint16_t kRedCorner = 0x7800;
 
 constexpr uint16_t kMinTestRpm = 3000;
 constexpr uint16_t kRedlineRpm = 6200;
@@ -108,10 +111,19 @@ void setAllBrightness(uint8_t brightness) {
   }
 }
 
+uint16_t cornerColorFor(uint16_t color) {
+  if (color == kGreen) return kGreenCorner;
+  if (color == kYellow) return kYellowCorner;
+  return kRedCorner;
+}
+
 void fillCentralSection(uint16_t (&frame)[64], uint16_t color) {
+  const uint16_t cornerColor = cornerColorFor(color);
   for (uint8_t y = kSectionStart; y < kSectionStart + kSectionSize; ++y) {
     for (uint8_t x = kSectionStart; x < kSectionStart + kSectionSize; ++x) {
-      frame[y * 8 + x] = color;
+      const bool isCorner = (x == kSectionStart || x == kSectionStart + kSectionSize - 1) &&
+                            (y == kSectionStart || y == kSectionStart + kSectionSize - 1);
+      frame[y * 8 + x] = isCorner ? cornerColor : color;
     }
   }
 }
