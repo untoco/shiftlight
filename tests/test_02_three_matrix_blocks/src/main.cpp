@@ -185,7 +185,9 @@ void renderScreen(uint16_t currentRpm, uint8_t stage) {
   M5.Display.fillScreen(TFT_BLACK);
   M5.Display.setTextDatum(middle_center);
   M5.Display.setTextColor(TFT_WHITE, TFT_BLACK);
-  M5.Display.setTextSize(3);
+  M5.Display.setTextSize(1);
+  const uint8_t rpmTextSize = M5.Display.width() / M5.Display.textWidth(rpmText);
+  M5.Display.setTextSize(rpmTextSize);
   M5.Display.drawString(rpmText, M5.Display.width() / 2, 48);
   M5.Display.setTextColor(stage >= 4 ? kRed : kGreen, TFT_BLACK);
   M5.Display.setTextSize(1);
