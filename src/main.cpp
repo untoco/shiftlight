@@ -7,26 +7,37 @@ constexpr gpio_num_t kChainRxPin = GPIO_NUM_1;
 constexpr gpio_num_t kChainTxPin = GPIO_NUM_2;
 constexpr uint32_t kChainBaudRate = 115200;
 constexpr uint8_t kBrightnessPercent = 25;
-constexpr uint32_t kPhaseDurationMs = 750;
-constexpr uint16_t kGreen = 0x07E0;
+
+constexpr uint8_t kMatrixCount = 2;
+constexpr uint8_t kSectionCount = 5;
+constexpr uint8_t kSectionWidth = 2;
+constexpr uint8_t kSectionGap = 1;
+constexpr uint8_t kCentralRow = 3;
+constexpr uint16_t kSectionColor = 0x07E0;
+
+constexpr uint16_t kMinTestRpm = 3000;
+constexpr uint16_t kMaxTestRpm = 7000;
+constexpr uint16_t kRpmStep = 100;
+constexpr uint32_t kRpmStepMs = 150;
 
 Chain chain;
-uint8_t rgbDeviceId = 0;
+uint8_t rgbDeviceIds[kMatrixCount] = {};
 uint8_t operationStatus = 0;
-bool matrixIsOn = false;
-uint32_t lastPhaseChangeMs = 0;
+uint16_t rpm = kMinTestRpm;
+int8_t rpmDirection = 1;
+uint32_t lastRpmStepMs = 0;
 
-void showStatus(const char* headline, const char* detail, uint16_t color) {
+void showFatal(const char* detail) {
   M5.Display.fillScreen(TFT_BLACK);
-  M5.Display.setTextColor(color, TFT_BLACK);
   M5.Display.setTextDatum(middle_center);
+  M5.Display.setTextColor(TFT_RED, TFT_BLACK);
   M5.Display.setTextSize(1);
-  M5.Display.drawString(headline, M5.Display.width() / 2, 36);
+  M5.Display.drawString("CHAIN RGB ERROR", M5.Display.width() / 2, 42);
   M5.Display.setTextColor(TFT_WHITE, TFT_BLACK);
   M5.Display.drawString(detail, M5.Display.width() / 2, 72);
 }
 
-bool findChainRgb() {
+bool findAndInitialiseMatrices() {
   uint16_t deviceCount = 0;
   if (chain.getDeviceNum(&deviceCount) != CHAIN_OK || deviceCount == 0) {
     Serial.println("No Chain devices found.");
@@ -42,59 +53,101 @@ bool findChainRgb() {
   device_list_t deviceList;
   deviceList.count = deviceCount;
   deviceList.devices = devices;
-  bool found = false;
+  uint8_t rgbFound = 0;
+
   if (chain.getDeviceList(&deviceList)) {
     for (uint16_t i = 0; i < deviceList.count; ++i) {
-      Serial.printf("Chain device: id=%u, type=0x%04X\n", deviceList.devices[i].id,
-                    deviceList.devices[i].device_type);
-      if (deviceList.devices[i].device_type == CHAIN_RGB_TYPE_CODE) {
-        rgbDeviceId = deviceList.devices[i].id;
-        found = true;
-        break;
+      const auto& device = deviceList.devices[i];
+      Serial.printf("Chain device: id=%u, type=0x%04X\n", device.id, device.device_type);
+      if (device.device_type == CHAIN_RGB_TYPE_CODE && rgbFound < kMatrixCount) {
+        rgbDeviceIds[rgbFound++] = device.id;
       }
     }
   }
   free(devices);
 
-  if (!found) {
-    Serial.println("No Chain RGB matrix found.");
-  }
-  return found;
-}
-
-bool initialiseMatrix() {
-  if (!findChainRgb()) {
+  if (rgbFound < kMatrixCount) {
+    Serial.printf("Need %u Chain RGB matrices; found %u.\n", kMatrixCount, rgbFound);
     return false;
   }
 
-  if (chain.setRGBMode(rgbDeviceId, RGB_PIXEL_MODE, &operationStatus) != CHAIN_OK ||
-      operationStatus != 1) {
-    Serial.println("Could not enable Chain RGB pixel mode.");
-    return false;
-  }
-
-  chain.setRGBRotation(rgbDeviceId, RGB_ROTATION_0, &operationStatus);
-  chain.setRGBBrightness(rgbDeviceId, kBrightnessPercent, &operationStatus);
-  chain.setRGBClear(rgbDeviceId, &operationStatus);
-  Serial.printf("Chain RGB ready: id=%u, brightness=%u%%\n", rgbDeviceId,
-                kBrightnessPercent);
-  return operationStatus == 1;
-}
-
-void setMatrix(bool on) {
-  if (on) {
-    uint16_t frame[64];
-    for (auto& pixel : frame) {
-      pixel = kGreen;
+  for (uint8_t matrix = 0; matrix < kMatrixCount; ++matrix) {
+    const uint8_t id = rgbDeviceIds[matrix];
+    if (chain.setRGBMode(id, RGB_PIXEL_MODE, &operationStatus) != CHAIN_OK ||
+        operationStatus != 1) {
+      Serial.printf("Could not enable pixel mode on matrix %u.\n", matrix + 1);
+      return false;
     }
-    chain.setRGBBufferRefresh(rgbDeviceId, frame, &operationStatus);
-  } else {
-    chain.setRGBClear(rgbDeviceId, &operationStatus);
+    chain.setRGBRotation(id, RGB_ROTATION_0, &operationStatus);
+    chain.setRGBBrightness(id, kBrightnessPercent, &operationStatus);
+    chain.setRGBClear(id, &operationStatus);
   }
 
-  Serial.printf("Matrix %s (result=%u)\n", on ? "ON" : "OFF", operationStatus);
-  showStatus(on ? "CHAIN RGB ON" : "CHAIN RGB OFF", on ? "GREEN / 25%" : "750 ms cycle",
-             on ? kGreen : TFT_RED);
+  Serial.printf("Shiftlight test ready: %u matrices, %u sections.\n", kMatrixCount,
+                kSectionCount);
+  return true;
+}
+
+uint8_t activeSectionsForRpm(uint16_t currentRpm) {
+  if (currentRpm < 4000) {
+    return 0;
+  }
+  const uint8_t sections = ((currentRpm - 4000) / 500) + 1;
+  return sections > kSectionCount ? kSectionCount : sections;
+}
+
+void renderShiftlight(uint8_t activeSections) {
+  uint16_t frames[kMatrixCount][64] = {};
+
+  for (uint8_t section = 0; section < activeSections; ++section) {
+    const uint8_t globalX = section * (kSectionWidth + kSectionGap);
+    const uint8_t matrix = globalX / 8;
+    const uint8_t localX = globalX % 8;
+
+    for (uint8_t y = kCentralRow; y < kCentralRow + kSectionWidth; ++y) {
+      for (uint8_t x = localX; x < localX + kSectionWidth; ++x) {
+        frames[matrix][y * 8 + x] = kSectionColor;
+      }
+    }
+  }
+
+  for (uint8_t matrix = 0; matrix < kMatrixCount; ++matrix) {
+    chain.setRGBBufferRefresh(rgbDeviceIds[matrix], frames[matrix], &operationStatus);
+  }
+}
+
+void renderScreen(uint16_t currentRpm, uint8_t activeSections) {
+  char rpmText[8];
+  char sectionsText[20];
+  snprintf(rpmText, sizeof(rpmText), "%u", currentRpm);
+  snprintf(sectionsText, sizeof(sectionsText), "SECTIONS %u/%u", activeSections,
+           kSectionCount);
+
+  M5.Display.fillScreen(TFT_BLACK);
+  M5.Display.setTextDatum(middle_center);
+  M5.Display.setTextColor(TFT_WHITE, TFT_BLACK);
+  M5.Display.setTextSize(3);
+  M5.Display.drawString(rpmText, M5.Display.width() / 2, 48);
+  M5.Display.setTextColor(kSectionColor, TFT_BLACK);
+  M5.Display.setTextSize(1);
+  M5.Display.drawString("RPM", M5.Display.width() / 2, 82);
+  M5.Display.drawString(sectionsText, M5.Display.width() / 2, 106);
+}
+
+void updateVisualisation() {
+  const uint8_t activeSections = activeSectionsForRpm(rpm);
+  renderShiftlight(activeSections);
+  renderScreen(rpm, activeSections);
+  Serial.printf("RPM=%u, sections=%u/%u\n", rpm, activeSections, kSectionCount);
+}
+
+void advanceRpm() {
+  if (rpm == kMaxTestRpm) {
+    rpmDirection = -1;
+  } else if (rpm == kMinTestRpm) {
+    rpmDirection = 1;
+  }
+  rpm += rpmDirection * kRpmStep;
 }
 
 }  // namespace
@@ -105,33 +158,31 @@ void setup() {
   Serial.begin(115200);
   delay(200);
 
-  showStatus("SHIFT LIGHT", "Searching Chain RGB...", TFT_YELLOW);
-  Serial.println("Shiftlight Chain RGB blink test");
-  Serial.printf("Chain UART: RX=GPIO%d, TX=GPIO%d, %lu baud\n", kChainRxPin, kChainTxPin,
-                kChainBaudRate);
+  M5.Display.fillScreen(TFT_BLACK);
+  M5.Display.setTextDatum(middle_center);
+  M5.Display.setTextColor(TFT_YELLOW, TFT_BLACK);
+  M5.Display.drawString("SEARCHING 2 RGB", M5.Display.width() / 2, 64);
 
+  Serial.println("Shiftlight two-matrix visualisation test");
   chain.begin(&Serial2, kChainBaudRate, kChainRxPin, kChainTxPin);
-  if (!initialiseMatrix()) {
-    showStatus("NO CHAIN RGB", "Check IN port and cable", TFT_RED);
+  if (!findAndInitialiseMatrices()) {
+    showFatal("Check Chain RGB OUT -> IN");
     while (true) {
       delay(250);
     }
   }
 
-  showStatus("CHAIN RGB READY", "Blink test starts", kGreen);
-  delay(500);
-  setMatrix(true);
-  matrixIsOn = true;
-  lastPhaseChangeMs = millis();
+  updateVisualisation();
+  lastRpmStepMs = millis();
 }
 
 void loop() {
   const uint32_t now = millis();
-  if (now - lastPhaseChangeMs < kPhaseDurationMs) {
+  if (now - lastRpmStepMs < kRpmStepMs) {
     return;
   }
 
-  matrixIsOn = !matrixIsOn;
-  setMatrix(matrixIsOn);
-  lastPhaseChangeMs = now;
+  advanceRpm();
+  updateVisualisation();
+  lastRpmStepMs = now;
 }

@@ -116,7 +116,7 @@ framework и библиотеки M5Stack. На Windows путь к програ
 
 `/dev/cu.usbmodem101` — пример имени порта на текущем Mac; оно может меняться
 после переподключения кабеля. Настройки платы и зависимостей хранятся в
-[`platformio.ini`](platformio.ini), а первый безопасный тест одной Chain RGB —
+[`platformio.ini`](platformio.ini), а текущий безопасный тест двух Chain RGB —
 в [`src/main.cpp`](src/main.cpp) и [`TESTING.md`](TESTING.md).
 
 ## Распределение интерфейсов AtomS3R
