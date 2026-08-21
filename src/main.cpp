@@ -8,11 +8,11 @@ constexpr gpio_num_t kChainTxPin = GPIO_NUM_2;
 constexpr uint32_t kChainBaudRate = 115200;
 constexpr uint8_t kBrightnessPercent = 25;
 
-constexpr uint8_t kMatrixCount = 2;
+constexpr uint8_t kMatrixCount = 3;
 constexpr uint8_t kSectionCount = 5;
-constexpr uint8_t kSectionWidth = 2;
-constexpr uint8_t kSectionGap = 1;
-constexpr uint8_t kCentralRow = 3;
+constexpr uint8_t kSectionWidth = 3;
+constexpr uint8_t kSectionGap = 2;
+constexpr uint8_t kCentralRow = 2;
 constexpr uint16_t kSectionColor = 0x07E0;
 
 constexpr uint16_t kMinTestRpm = 3000;
@@ -101,12 +101,12 @@ void renderShiftlight(uint8_t activeSections) {
 
   for (uint8_t section = 0; section < activeSections; ++section) {
     const uint8_t globalX = section * (kSectionWidth + kSectionGap);
-    const uint8_t matrix = globalX / 8;
-    const uint8_t localX = globalX % 8;
 
     for (uint8_t y = kCentralRow; y < kCentralRow + kSectionWidth; ++y) {
-      for (uint8_t x = localX; x < localX + kSectionWidth; ++x) {
-        frames[matrix][y * 8 + x] = kSectionColor;
+      for (uint8_t x = globalX; x < globalX + kSectionWidth; ++x) {
+        const uint8_t matrix = x / 8;
+        const uint8_t localX = x % 8;
+        frames[matrix][y * 8 + localX] = kSectionColor;
       }
     }
   }
@@ -161,9 +161,9 @@ void setup() {
   M5.Display.fillScreen(TFT_BLACK);
   M5.Display.setTextDatum(middle_center);
   M5.Display.setTextColor(TFT_YELLOW, TFT_BLACK);
-  M5.Display.drawString("SEARCHING 2 RGB", M5.Display.width() / 2, 64);
+  M5.Display.drawString("SEARCHING 3 RGB", M5.Display.width() / 2, 64);
 
-  Serial.println("Shiftlight two-matrix visualisation test");
+  Serial.println("Shiftlight three-matrix visualisation test");
   chain.begin(&Serial2, kChainBaudRate, kChainRxPin, kChainTxPin);
   if (!findAndInitialiseMatrices()) {
     showFatal("Check Chain RGB OUT -> IN");
