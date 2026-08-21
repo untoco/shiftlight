@@ -116,10 +116,10 @@ framework и библиотеки M5Stack. На Windows путь к програ
 
 `/dev/cu.usbmodem101` — пример имени порта на текущем Mac; оно может меняться
 после переподключения кабеля. Настройки платы и зависимостей хранятся в
-[`platformio.ini`](platformio.ini). Текущий безопасный тест вынесен в
-[`tests/test_01_three_matrix_redline`](tests/test_01_three_matrix_redline):
-там находятся его исходный код и краткое русское описание. PlatformIO соберёт
-именно этот тест по настройке `src_dir`.
+[`platformio.ini`](platformio.ini). Сценарии тестов хранятся отдельно:
+[`Test 01`](tests/test_01_three_matrix_redline) и
+[`Test 02`](tests/test_02_three_matrix_blocks). PlatformIO соберёт текущий
+Test 02 по настройке `src_dir`.
 
 ## Распределение интерфейсов AtomS3R
 
