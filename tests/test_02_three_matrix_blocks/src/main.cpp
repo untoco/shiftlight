@@ -32,6 +32,7 @@ uint8_t operationStatus = 0;
 uint16_t rpm = kMinTestRpm;
 int8_t rpmDirection = 1;
 uint8_t peakHoldSteps = 0;
+uint8_t lastRenderedStage = 0xFF;
 bool redlineModeActive = false;
 bool redlineFlashOn = false;
 uint32_t lastRedFlashMs = 0;
@@ -129,6 +130,24 @@ void fillCentralSection(uint16_t (&frame)[64], uint16_t color) {
   }
 }
 
+void setCentralSections(uint16_t color) {
+  RGBPixelInfo pixels[kSectionSize * kSectionSize];
+  const uint16_t cornerColor = cornerColorFor(color);
+  uint8_t pixelIndex = 0;
+
+  for (uint8_t y = kSectionStart; y < kSectionStart + kSectionSize; ++y) {
+    for (uint8_t x = kSectionStart; x < kSectionStart + kSectionSize; ++x) {
+      const bool isCorner = (x == kSectionStart || x == kSectionStart + kSectionSize - 1) &&
+                            (y == kSectionStart || y == kSectionStart + kSectionSize - 1);
+      pixels[pixelIndex++] = {x, y, isCorner ? cornerColor : color};
+    }
+  }
+
+  for (uint8_t matrix = 0; matrix < kMatrixCount; ++matrix) {
+    chain.setRGBPixel(rgbDeviceIds[matrix], pixels, pixelIndex, &operationStatus);
+  }
+}
+
 void renderRedline(bool flashOn) {
   if (!redlineModeActive) {
     uint16_t redFrames[kMatrixCount][64];
@@ -170,9 +189,8 @@ void renderShiftlight(uint16_t currentRpm, uint8_t stage) {
     fillCentralSection(frames[1], kGreen);
     fillCentralSection(frames[0], kYellow);
   } else if (stage == 4) {
-    for (auto& frame : frames) {
-      fillCentralSection(frame, kRed);
-    }
+    setCentralSections(kRed);
+    return;
   }
   sendFrames(frames);
 }
@@ -198,7 +216,10 @@ void renderScreen(uint16_t currentRpm, uint8_t stage) {
 
 void updateVisualisation() {
   const uint8_t stage = stageForRpm(rpm);
-  renderShiftlight(rpm, stage);
+  if (stage != lastRenderedStage || stage == 5) {
+    renderShiftlight(rpm, stage);
+    lastRenderedStage = stage;
+  }
   renderScreen(rpm, stage);
   Serial.printf("RPM=%u, point=%u/5\n", rpm, stage);
 }
