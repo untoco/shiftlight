@@ -29,21 +29,21 @@ constexpr uint32_t kPipelinedResponseDrainMs = 20;
 
 class FastChain : public Chain {
  public:
-  void setRGBPixelsPipelined(const uint8_t (&deviceIds)[kMatrixCount], RGBPixelInfo* pixels,
+  void setRGBPixelsPipelined(const uint8_t (&deviceIds)[kMatrixCount],
+                             const RGBPixelInfo (&pixels)[kMatrixCount][kSectionSize * kSectionSize],
                              uint8_t pixelCount) {
     if (!acquireMutex()) {
       return;
     }
 
-    cmdBufferSize = 0;
-    cmdBuffer[cmdBufferSize++] = pixelCount;
-    for (uint8_t i = 0; i < pixelCount; ++i) {
-      cmdBuffer[cmdBufferSize++] = ((pixels[i].x & 0x07) << 3) | (pixels[i].y & 0x07);
-      cmdBuffer[cmdBufferSize++] = pixels[i].color & 0xFF;
-      cmdBuffer[cmdBufferSize++] = (pixels[i].color >> 8) & 0xFF;
-    }
-
     for (uint8_t matrix = 0; matrix < kMatrixCount; ++matrix) {
+      cmdBufferSize = 0;
+      cmdBuffer[cmdBufferSize++] = pixelCount;
+      for (uint8_t i = 0; i < pixelCount; ++i) {
+        cmdBuffer[cmdBufferSize++] = ((pixels[matrix][i].x & 0x07) << 3) | (pixels[matrix][i].y & 0x07);
+        cmdBuffer[cmdBufferSize++] = pixels[matrix][i].color & 0xFF;
+        cmdBuffer[cmdBufferSize++] = (pixels[matrix][i].color >> 8) & 0xFF;
+      }
       sendPacket(deviceIds[matrix], CHAIN_RGB_SET_PIXEL, cmdBuffer, cmdBufferSize);
     }
 
@@ -157,20 +157,28 @@ void fillCentralSection(uint16_t (&frame)[64], uint16_t color) {
   }
 }
 
-void setCentralSections(uint16_t color) {
-  RGBPixelInfo pixels[kSectionSize * kSectionSize];
-  const uint16_t cornerColor = cornerColorFor(color);
+void setCentralSections(const uint16_t (&colors)[kMatrixCount]) {
+  RGBPixelInfo pixels[kMatrixCount][kSectionSize * kSectionSize];
   uint8_t pixelIndex = 0;
 
   for (uint8_t y = kSectionStart; y < kSectionStart + kSectionSize; ++y) {
     for (uint8_t x = kSectionStart; x < kSectionStart + kSectionSize; ++x) {
       const bool isCorner = (x == kSectionStart || x == kSectionStart + kSectionSize - 1) &&
                             (y == kSectionStart || y == kSectionStart + kSectionSize - 1);
-      pixels[pixelIndex++] = {x, y, isCorner ? cornerColor : color};
+      for (uint8_t matrix = 0; matrix < kMatrixCount; ++matrix) {
+        const uint16_t color = colors[matrix];
+        pixels[matrix][pixelIndex] = {x, y, isCorner ? cornerColorFor(color) : color};
+      }
+      ++pixelIndex;
     }
   }
 
   chain.setRGBPixelsPipelined(rgbDeviceIds, pixels, pixelIndex);
+}
+
+void setCentralSections(uint16_t color) {
+  const uint16_t colors[kMatrixCount] = {color, color, color};
+  setCentralSections(colors);
 }
 
 void renderRedline(bool flashOn) {
@@ -211,9 +219,9 @@ void renderShiftlight(uint16_t currentRpm, uint8_t stage) {
     fillCentralSection(frames[2], kGreen);
     fillCentralSection(frames[1], kGreen);
   } else if (stage == 3) {
-    fillCentralSection(frames[2], kGreen);
-    fillCentralSection(frames[1], kGreen);
-    fillCentralSection(frames[0], kYellow);
+    const uint16_t colors[kMatrixCount] = {kYellow, kGreen, kGreen};
+    setCentralSections(colors);
+    return;
   } else if (stage == 4) {
     if (wasRedlineMode) {
       for (auto& frame : frames) {
