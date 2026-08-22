@@ -197,7 +197,10 @@ void renderShiftlight(uint16_t currentRpm, uint8_t stage) {
       sendFrames(frames);
       return;
     }
+
+    setAllBrightness(0);
     setCentralSections(kRed);
+    setAllBrightness(kBrightnessPercent);
     return;
   }
   sendFrames(frames);
