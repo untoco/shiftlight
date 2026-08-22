@@ -25,8 +25,35 @@ constexpr uint16_t kRpmStep = 100;
 constexpr uint32_t kRpmStepMs = 75;
 constexpr uint8_t kPeakHoldSteps = 20;
 constexpr uint32_t kRedFlashHalfPeriodMs = 150;
+constexpr uint32_t kPipelinedResponseDrainMs = 20;
 
-Chain chain;
+class FastChain : public Chain {
+ public:
+  void setRGBPixelsPipelined(const uint8_t (&deviceIds)[kMatrixCount], RGBPixelInfo* pixels,
+                             uint8_t pixelCount) {
+    if (!acquireMutex()) {
+      return;
+    }
+
+    cmdBufferSize = 0;
+    cmdBuffer[cmdBufferSize++] = pixelCount;
+    for (uint8_t i = 0; i < pixelCount; ++i) {
+      cmdBuffer[cmdBufferSize++] = ((pixels[i].x & 0x07) << 3) | (pixels[i].y & 0x07);
+      cmdBuffer[cmdBufferSize++] = pixels[i].color & 0xFF;
+      cmdBuffer[cmdBufferSize++] = (pixels[i].color >> 8) & 0xFF;
+    }
+
+    for (uint8_t matrix = 0; matrix < kMatrixCount; ++matrix) {
+      sendPacket(deviceIds[matrix], CHAIN_RGB_SET_PIXEL, cmdBuffer, cmdBufferSize);
+    }
+
+    delay(kPipelinedResponseDrainMs);
+    processIncomingData();
+    releaseMutex();
+  }
+};
+
+FastChain chain;
 uint8_t rgbDeviceIds[kMatrixCount] = {};
 uint8_t operationStatus = 0;
 uint16_t rpm = kMinTestRpm;
@@ -143,9 +170,7 @@ void setCentralSections(uint16_t color) {
     }
   }
 
-  for (uint8_t matrix = 0; matrix < kMatrixCount; ++matrix) {
-    chain.setRGBPixel(rgbDeviceIds[matrix], pixels, pixelIndex, &operationStatus);
-  }
+  chain.setRGBPixelsPipelined(rgbDeviceIds, pixels, pixelIndex);
 }
 
 void renderRedline(bool flashOn) {
