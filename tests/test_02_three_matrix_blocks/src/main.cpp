@@ -173,7 +173,8 @@ void renderShiftlight(uint16_t currentRpm, uint8_t stage) {
     return;
   }
 
-  if (redlineModeActive) {
+  const bool wasRedlineMode = redlineModeActive;
+  if (wasRedlineMode) {
     setAllBrightness(kBrightnessPercent);
     redlineModeActive = false;
   }
@@ -189,6 +190,13 @@ void renderShiftlight(uint16_t currentRpm, uint8_t stage) {
     fillCentralSection(frames[1], kGreen);
     fillCentralSection(frames[0], kYellow);
   } else if (stage == 4) {
+    if (wasRedlineMode) {
+      for (auto& frame : frames) {
+        fillCentralSection(frame, kRed);
+      }
+      sendFrames(frames);
+      return;
+    }
     setCentralSections(kRed);
     return;
   }
