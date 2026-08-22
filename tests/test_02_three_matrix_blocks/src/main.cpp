@@ -161,14 +161,14 @@ void renderShiftlight(uint16_t currentRpm, uint8_t stage) {
 
   uint16_t frames[kMatrixCount][64] = {};
   if (stage == 1) {
-    fillCentralSection(frames[0], kGreen);
+    fillCentralSection(frames[2], kGreen);
   } else if (stage == 2) {
-    fillCentralSection(frames[0], kGreen);
+    fillCentralSection(frames[2], kGreen);
     fillCentralSection(frames[1], kGreen);
   } else if (stage == 3) {
-    fillCentralSection(frames[0], kGreen);
+    fillCentralSection(frames[2], kGreen);
     fillCentralSection(frames[1], kGreen);
-    fillCentralSection(frames[2], kYellow);
+    fillCentralSection(frames[0], kYellow);
   } else if (stage == 4) {
     for (auto& frame : frames) {
       fillCentralSection(frame, kRed);
