@@ -20,6 +20,7 @@ constexpr uint16_t kRedCorner = 0x3800;
 
 constexpr uint16_t kMinTestRpm = 3000;
 constexpr uint16_t kRedlineRpm = 6200;
+constexpr uint16_t kMaxTestRpm = 7000;
 constexpr uint16_t kRpmStep = 100;
 constexpr uint32_t kRpmStepMs = 75;
 constexpr uint8_t kPeakHoldSteps = 20;
@@ -203,7 +204,7 @@ void updateVisualisation() {
 }
 
 void advanceRpm() {
-  if (rpm == kRedlineRpm) {
+  if (rpm == kMaxTestRpm) {
     if (peakHoldSteps++ < kPeakHoldSteps) {
       return;
     }
