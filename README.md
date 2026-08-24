@@ -80,22 +80,48 @@ PlatformIO Core в командной строке: отдельная IDE, M5Bu
 графическое приложение не нужны. Такой проект одинаково собирается на macOS,
 Linux и Windows.
 
-### Первичная настройка
+### Что нужно на чистой macOS
 
-В корне проекта создаётся изолированное окружение, поэтому PlatformIO и его
-зависимости не меняют системный Python или настройки macOS:
+Нужны только `git` и Python 3. Их наличие можно проверить так:
 
 ```bash
-cd /путь/к/shiftlight
-python3 -m venv .tooling/platformio
-.tooling/platformio/bin/python -m pip install platformio
+git --version
+python3 --version
 ```
 
-При первой сборке PlatformIO сам загрузит компилятор ESP32-S3, Arduino
-framework и библиотеки M5Stack. На Windows путь к программам окружения будет
+Если `git` отсутствует, установите инструменты разработчика macOS командой
+`xcode-select --install`. Если отсутствует Python 3, установите его через
+Homebrew (`brew install python`) или с [python.org](https://www.python.org/downloads/macos/).
+Среда разработки M5Stack, Arduino IDE и M5Burner не требуются.
+
+### Первый запуск после клонирования
+
+`.tooling` не хранится в Git: это локальная изолированная среда Python. Она
+создаётся первой командой ниже и может быть в любой момент удалена и создана
+снова. `.pio` — аналогично локальный каталог с результатами сборки.
+
+```bash
+git clone https://github.com/untoco/shiftlight.git
+cd shiftlight
+
+# Создать локальную среду только для этого репозитория
+python3 -m venv .tooling/platformio
+
+# Установить проверенную версию PlatformIO Core
+.tooling/platformio/bin/python -m pip install --upgrade pip "platformio==6.1.19"
+
+# Первая сборка также скачает ESP32-S3 toolchain, Arduino framework и M5-библиотеки
+.tooling/platformio/bin/pio run
+```
+
+На Windows путь к программам окружения будет
 `.tooling\platformio\Scripts\` вместо `.tooling/platformio/bin/`.
 
-### Сборка и загрузка
+### Сборка, деплой и мониторинг
+
+Подключите AtomS3R качественным USB-C кабелем с передачей данных. Atomic CAN
+Base и Chain RGB могут быть подключены; автомобильную шину для тестовой
+прошивки подключать не нужно.
 
 ```bash
 # Собрать прошивку
@@ -112,11 +138,15 @@ framework и библиотеки M5Stack. На Windows путь к програ
 ```
 
 `/dev/cu.usbmodem101` — пример имени порта на текущем Mac; оно может меняться
-после переподключения кабеля. Настройки платы и зависимостей хранятся в
-[`platformio.ini`](platformio.ini). Сценарии тестов хранятся отдельно:
-[`Test 01`](tests/test_01_three_matrix_redline) и
-[`Test 02`](tests/test_02_three_matrix_blocks). PlatformIO соберёт текущий
-Test 02 по настройке `src_dir`.
+после переподключения кабеля: всегда используйте имя из `pio device list`.
+Настройки платы, библиотек и специального режима загрузки AtomS3R
+`--no-stub` хранятся в [`platformio.ini`](platformio.ini), поэтому параметры
+загрузки вручную добавлять не нужно.
+
+Сценарии тестов хранятся отдельно: [`Test 01`](tests/test_01_three_matrix_redline)
+и [`Test 02`](tests/test_02_three_matrix_blocks). Сейчас `platformio.ini`
+собирает и загружает Test 02 через `src_dir`. После обновления исходников из
+Git достаточно повторить `pio run`, а затем команду загрузки.
 
 ## Распределение интерфейсов AtomS3R
 
