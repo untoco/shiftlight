@@ -247,9 +247,9 @@ void renderScreen(bool rpmFresh, uint8_t stage) {
 
   if (!rpmFresh) {
     M5.Display.setTextColor(TFT_YELLOW, TFT_BLACK);
-    M5.Display.setTextSize(2);
-    M5.Display.drawString("WAITING", M5.Display.width() / 2, 42);
-    M5.Display.drawString("FOR CAN", M5.Display.width() / 2, 82);
+    M5.Display.setTextSize(3);
+    M5.Display.drawString("WAITING", M5.Display.width() / 2, 36);
+    M5.Display.drawString("FOR CAN", M5.Display.width() / 2, 88);
     return;
   }
 
