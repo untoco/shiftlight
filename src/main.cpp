@@ -247,10 +247,9 @@ void renderScreen(bool rpmFresh, uint8_t stage) {
 
   if (!rpmFresh) {
     M5.Display.setTextColor(TFT_YELLOW, TFT_BLACK);
-    M5.Display.setTextSize(1);
-    M5.Display.drawString("WAITING FOR RPM", M5.Display.width() / 2, 44);
-    M5.Display.setTextColor(TFT_WHITE, TFT_BLACK);
-    M5.Display.drawString("PT-CAN 500 kbit/s", M5.Display.width() / 2, 72);
+    M5.Display.setTextSize(2);
+    M5.Display.drawString("WAITING", M5.Display.width() / 2, 42);
+    M5.Display.drawString("FOR CAN", M5.Display.width() / 2, 82);
     return;
   }
 
@@ -294,6 +293,7 @@ bool readRpmFrames() {
 void setup() {
   auto config = M5.config();
   M5.begin(config);
+  M5.Display.setRotation(3);
   Serial.begin(115200);
   delay(200);
 
