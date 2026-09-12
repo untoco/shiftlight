@@ -155,9 +155,13 @@ void setAllBrightness(uint8_t brightness) {
 void renderStage(uint8_t stage) {
   if (stage == 5) {
     if (!redlineModeActive) {
-      uint16_t frames[kMatrixCount][64];
+      uint16_t frames[kMatrixCount][64] = {};
       for (auto& frame : frames) {
-        for (auto& pixel : frame) pixel = kRed;
+        for (uint8_t y = kSectionStartY; y < 8; ++y) {
+          for (uint8_t x = 0; x < 8; ++x) {
+            frame[y * 8 + x] = kRed;
+          }
+        }
       }
       sendFrames(frames);
       redlineModeActive = true;
