@@ -117,10 +117,10 @@ bool initialiseMatrices() {
 
 uint8_t stageForRpm(uint16_t currentRpm) {
   if (currentRpm >= kRedlineRpm) return 5;
-  if (currentRpm >= 6200) return 4;
-  if (currentRpm >= 5500) return 3;
-  if (currentRpm >= 4800) return 2;
-  if (currentRpm >= 4100) return 1;
+  if (currentRpm >= 6300) return 4;
+  if (currentRpm >= 5700) return 3;
+  if (currentRpm >= 5100) return 2;
+  if (currentRpm >= 4500) return 1;
   return 0;
 }
 
