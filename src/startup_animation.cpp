@@ -18,6 +18,7 @@ constexpr uint16_t kMidGray = 0x6B4D;
 constexpr uint16_t kDarkCoolGray = 0x21CA;
 constexpr uint16_t kBlack = 0x0000;
 constexpr uint16_t kFadeColors[] = {kLightGray, kMidGray, kDarkCoolGray, kBlack};
+constexpr uint32_t kFadeStepIntervalMs = 20;
 
 }  // namespace
 
@@ -38,9 +39,14 @@ void playFinishFlagSweep(Chain& chain, const uint8_t* deviceIds, uint8_t matrixC
   if (matrixCount > kSupportedMatrixCount) return;
 
   const uint8_t checkerGroups = (matrixCount * kMatrixWidth) / kCheckerSize;
-  const uint32_t fillDurationMs = durationMs / 2;
-  const uint32_t fadeDurationMs = durationMs - fillDurationMs;
   const uint8_t fadeStepCount = sizeof(kFadeColors) / sizeof(kFadeColors[0]);
+  const uint32_t fadeDurationMs = kFadeStepIntervalMs * fadeStepCount;
+  const uint32_t initialHoldMs = durationMs / 4;
+  const uint32_t waveDurationMs = durationMs - initialHoldMs - fadeDurationMs;
+  const uint32_t groupIntervalMs =
+      checkerGroups > 1 ? waveDurationMs / (checkerGroups - 1) : 0;
+  bool appeared[kSupportedMatrixCount * kGroupsPerMatrix] = {};
+  uint8_t nextFadeStep[kSupportedMatrixCount * kGroupsPerMatrix] = {};
 
   for (uint8_t matrix = 0; matrix < matrixCount; ++matrix) {
     chain.setRGBClear(deviceIds[matrix], operationStatus);
@@ -48,38 +54,34 @@ void playFinishFlagSweep(Chain& chain, const uint8_t* deviceIds, uint8_t matrixC
   }
 
   const uint32_t startedAtMs = millis();
-  for (uint8_t group = 0; group < checkerGroups; ++group) {
-    const uint8_t checkerX = checkerGroups - 1 - group;
-    const uint8_t matrix = checkerX / kGroupsPerMatrix;
-    const uint8_t localGroup = checkerX % kGroupsPerMatrix;
-    RGBPixelInfo pixels[kGroupsPerMatrix * kCheckerSize * kCheckerSize] = {};
-    uint8_t pixelCount = 0;
-    addCheckerSquare(pixels, pixelCount, localGroup, checkerX % 2, kWhite);
-    chain.setRGBPixel(deviceIds[matrix], pixels, pixelCount, operationStatus);
+  while (millis() - startedAtMs < durationMs) {
+    const uint32_t elapsedMs = millis() - startedAtMs;
 
-    const uint32_t targetMs = startedAtMs + (fillDurationMs * (group + 1)) / checkerGroups;
-    const uint32_t nowMs = millis();
-    if (nowMs < targetMs) delay(targetMs - nowMs);
-  }
+    for (uint8_t group = 0; group < checkerGroups; ++group) {
+      const uint8_t checkerX = checkerGroups - 1 - group;
+      const uint8_t matrix = checkerX / kGroupsPerMatrix;
+      const uint8_t localGroup = checkerX % kGroupsPerMatrix;
+      const uint32_t appearAtMs = group * groupIntervalMs;
 
-  uint32_t fadeStep = 0;
-  for (uint8_t group = 0; group < checkerGroups; ++group) {
-    const uint8_t checkerX = checkerGroups - 1 - group;
-    const uint8_t matrix = checkerX / kGroupsPerMatrix;
-    const uint8_t localGroup = checkerX % kGroupsPerMatrix;
+      if (!appeared[group] && elapsedMs >= appearAtMs) {
+        RGBPixelInfo pixels[kGroupsPerMatrix * kCheckerSize * kCheckerSize] = {};
+        uint8_t pixelCount = 0;
+        addCheckerSquare(pixels, pixelCount, localGroup, checkerX % 2, kWhite);
+        chain.setRGBPixel(deviceIds[matrix], pixels, pixelCount, operationStatus);
+        appeared[group] = true;
+      }
 
-    for (uint16_t color : kFadeColors) {
+      const uint32_t fadeAtMs = appearAtMs + initialHoldMs;
+      while (appeared[group] && nextFadeStep[group] < fadeStepCount &&
+             elapsedMs >= fadeAtMs + nextFadeStep[group] * kFadeStepIntervalMs) {
+        const uint16_t color = kFadeColors[nextFadeStep[group]++];
       RGBPixelInfo pixels[kGroupsPerMatrix * kCheckerSize * kCheckerSize] = {};
       uint8_t pixelCount = 0;
       addCheckerSquare(pixels, pixelCount, localGroup, checkerX % 2, color);
       chain.setRGBPixel(deviceIds[matrix], pixels, pixelCount, operationStatus);
-      ++fadeStep;
-
-      const uint32_t targetMs = startedAtMs + fillDurationMs +
-                                (fadeDurationMs * fadeStep) / (checkerGroups * fadeStepCount);
-      const uint32_t nowMs = millis();
-      if (nowMs < targetMs) delay(targetMs - nowMs);
+      }
     }
+    delay(5);
   }
 
   for (uint8_t matrix = 0; matrix < matrixCount; ++matrix) {
