@@ -11,7 +11,7 @@ constexpr uint8_t kBrightnessPercent = 25;
 constexpr uint8_t kMatrixCount = 3;
 constexpr uint8_t kSectionSize = 4;
 constexpr uint8_t kSectionStartX = 2;
-constexpr uint8_t kSectionStartY = 0;
+constexpr uint8_t kSectionStartY = 4;
 constexpr uint16_t kGreen = 0x07E0;
 constexpr uint16_t kGreenCorner = 0x01E0;
 constexpr uint16_t kYellow = 0xFFE0;
@@ -29,7 +29,7 @@ constexpr uint32_t kRedFlashHalfPeriodMs = 150;
 
 class FastChain : public Chain {
  public:
-  void setUpperSectionsPipelined(const uint8_t (&deviceIds)[kMatrixCount],
+  void setLowerSectionsPipelined(const uint8_t (&deviceIds)[kMatrixCount],
                                  const uint16_t (&colors)[kMatrixCount]) {
     if (!acquireMutex()) return;
 
@@ -130,7 +130,7 @@ uint16_t cornerColorFor(uint16_t color) {
   return kRedCorner;
 }
 
-void fillUpperSection(uint16_t (&frame)[64], uint16_t color) {
+void fillLowerSection(uint16_t (&frame)[64], uint16_t color) {
   for (uint8_t y = kSectionStartY; y < kSectionStartY + kSectionSize; ++y) {
     for (uint8_t x = kSectionStartX; x < kSectionStartX + kSectionSize; ++x) {
       const bool corner = (x == kSectionStartX || x == kSectionStartX + kSectionSize - 1) &&
@@ -179,10 +179,10 @@ void renderStage(uint8_t stage) {
 
   uint16_t frames[kMatrixCount][64] = {};
   if (stage == 1) {
-    fillUpperSection(frames[2], kGreen);
+    fillLowerSection(frames[2], kGreen);
   } else if (stage == 2) {
-    fillUpperSection(frames[2], kGreen);
-    fillUpperSection(frames[1], kGreen);
+    fillLowerSection(frames[2], kGreen);
+    fillLowerSection(frames[1], kGreen);
   } else if (stage == 3 || stage == 4) {
     const uint16_t colors[kMatrixCount] = {
         stage == 3 ? kYellow : kRed,
@@ -190,11 +190,11 @@ void renderStage(uint8_t stage) {
         stage == 3 ? kGreen : kRed,
     };
     if (!wasRedlineMode) {
-      chain.setUpperSectionsPipelined(rgbDeviceIds, colors);
+      chain.setLowerSectionsPipelined(rgbDeviceIds, colors);
       return;
     }
     for (uint8_t matrix = 0; matrix < kMatrixCount; ++matrix) {
-      fillUpperSection(frames[matrix], colors[matrix]);
+      fillLowerSection(frames[matrix], colors[matrix]);
     }
   }
   sendFrames(frames);
@@ -248,7 +248,7 @@ void setup() {
   M5.Display.fillScreen(TFT_BLACK);
   M5.Display.setTextDatum(middle_center);
   M5.Display.setTextColor(TFT_YELLOW, TFT_BLACK);
-  M5.Display.drawString("TEST 03: UPPER", M5.Display.width() / 2, 64);
+  M5.Display.drawString("TEST 03: LOWER", M5.Display.width() / 2, 64);
 
   chain.begin(&Serial2, kChainBaudRate, kChainRxPin, kChainTxPin);
   if (!initialiseMatrices()) {

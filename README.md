@@ -122,7 +122,7 @@ python3 -m venv .tooling/platformio
 
 Сценарии тестов хранятся отдельно: [`Test 01`](tests/test_01_three_matrix_redline)
 [`Test 02`](tests/test_02_three_matrix_blocks) и
-[`Test 03`](tests/test_03_upper_matrix_blocks). Сейчас по умолчанию
+[`Test 03`](tests/test_03_lower_matrix_blocks). Сейчас по умолчанию
 собирается основная прошивка из [`src/main.cpp`](src/main.cpp). Для запуска
 теста в [`platformio.ini`](platformio.ini) временно меняется `src_dir`;
 команды остаются теми же.
