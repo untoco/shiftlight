@@ -21,7 +21,8 @@ constexpr uint8_t kBrightnessPercent = 25;
 
 constexpr uint8_t kMatrixCount = 3;
 constexpr uint8_t kSectionSize = 4;
-constexpr uint8_t kSectionStart = 2;
+constexpr uint8_t kSectionStartX = 2;
+constexpr uint8_t kSectionStartY = 4;
 constexpr uint16_t kGreen = 0x07E0;
 constexpr uint16_t kGreenCorner = 0x01E0;
 constexpr uint16_t kYellow = 0xFFE0;
@@ -31,8 +32,8 @@ constexpr uint16_t kRedCorner = 0x3800;
 
 class FastChain : public Chain {
  public:
-  void setCentralSectionsPipelined(const uint8_t (&deviceIds)[kMatrixCount],
-                                   const uint16_t (&colors)[kMatrixCount]) {
+  void setLowerSectionsPipelined(const uint8_t (&deviceIds)[kMatrixCount],
+                                 const uint16_t (&colors)[kMatrixCount]) {
     if (!acquireMutex()) {
       return;
     }
@@ -40,10 +41,10 @@ class FastChain : public Chain {
     for (uint8_t matrix = 0; matrix < kMatrixCount; ++matrix) {
       cmdBufferSize = 0;
       cmdBuffer[cmdBufferSize++] = kSectionSize * kSectionSize;
-      for (uint8_t y = kSectionStart; y < kSectionStart + kSectionSize; ++y) {
-        for (uint8_t x = kSectionStart; x < kSectionStart + kSectionSize; ++x) {
-          const bool corner = (x == kSectionStart || x == kSectionStart + kSectionSize - 1) &&
-                              (y == kSectionStart || y == kSectionStart + kSectionSize - 1);
+      for (uint8_t y = kSectionStartY; y < kSectionStartY + kSectionSize; ++y) {
+        for (uint8_t x = kSectionStartX; x < kSectionStartX + kSectionSize; ++x) {
+          const bool corner = (x == kSectionStartX || x == kSectionStartX + kSectionSize - 1) &&
+                              (y == kSectionStartY || y == kSectionStartY + kSectionSize - 1);
           const uint16_t color = corner ? cornerColorFor(colors[matrix]) : colors[matrix];
           cmdBuffer[cmdBufferSize++] = ((x & 0x07) << 3) | (y & 0x07);
           cmdBuffer[cmdBufferSize++] = color & 0xFF;
@@ -166,11 +167,11 @@ uint16_t cornerColorFor(uint16_t color) {
   return kRedCorner;
 }
 
-void fillCentralSection(uint16_t (&frame)[64], uint16_t color) {
-  for (uint8_t y = kSectionStart; y < kSectionStart + kSectionSize; ++y) {
-    for (uint8_t x = kSectionStart; x < kSectionStart + kSectionSize; ++x) {
-      const bool corner = (x == kSectionStart || x == kSectionStart + kSectionSize - 1) &&
-                          (y == kSectionStart || y == kSectionStart + kSectionSize - 1);
+void fillLowerSection(uint16_t (&frame)[64], uint16_t color) {
+  for (uint8_t y = kSectionStartY; y < kSectionStartY + kSectionSize; ++y) {
+    for (uint8_t x = kSectionStartX; x < kSectionStartX + kSectionSize; ++x) {
+      const bool corner = (x == kSectionStartX || x == kSectionStartX + kSectionSize - 1) &&
+                          (y == kSectionStartY || y == kSectionStartY + kSectionSize - 1);
       frame[y * 8 + x] = corner ? cornerColorFor(color) : color;
     }
   }
@@ -190,10 +191,12 @@ void setAllBrightness(uint8_t brightness) {
 
 void renderRedline(bool flashOn) {
   if (!redlineModeActive) {
-    uint16_t frames[kMatrixCount][64];
+    uint16_t frames[kMatrixCount][64] = {};
     for (auto& frame : frames) {
-      for (auto& pixel : frame) {
-        pixel = kRed;
+      for (uint8_t y = kSectionStartY; y < 8; ++y) {
+        for (uint8_t x = 0; x < 8; ++x) {
+          frame[y * 8 + x] = kRed;
+        }
       }
     }
     sendFrames(frames);
@@ -220,10 +223,10 @@ void renderStage(uint8_t stage) {
 
   uint16_t frames[kMatrixCount][64] = {};
   if (stage == 1) {
-    fillCentralSection(frames[2], kGreen);
+    fillLowerSection(frames[2], kGreen);
   } else if (stage == 2) {
-    fillCentralSection(frames[2], kGreen);
-    fillCentralSection(frames[1], kGreen);
+    fillLowerSection(frames[2], kGreen);
+    fillLowerSection(frames[1], kGreen);
   } else if (stage == 3 || stage == 4) {
     const uint16_t colors[kMatrixCount] = {
         stage == 3 ? kYellow : kRed,
@@ -231,11 +234,11 @@ void renderStage(uint8_t stage) {
         stage == 3 ? kGreen : kRed,
     };
     if (!wasRedlineMode) {
-      chain.setCentralSectionsPipelined(rgbDeviceIds, colors);
+      chain.setLowerSectionsPipelined(rgbDeviceIds, colors);
       return;
     }
     for (uint8_t matrix = 0; matrix < kMatrixCount; ++matrix) {
-      fillCentralSection(frames[matrix], colors[matrix]);
+      fillLowerSection(frames[matrix], colors[matrix]);
     }
   }
   sendFrames(frames);
