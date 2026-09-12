@@ -50,9 +50,13 @@ Atomic CAN Base и ведёт цепочку индикаторов через �
 Весь набор параметров собран в [`include/shiftlight_config.h`](include/shiftlight_config.h):
 
 - `kShiftPoints` — пять RPM-точек переключения;
-- `kDemoRpm` — одинаковый цикл 3000–7000 RPM для всех визуализаций;
 - `kVisualizationType` — геометрия основной прошивки: центральные или нижние
   секции 4×4. Сейчас выбрана `kLowerBlocks`.
+
+Демо-цикл оборотов находится отдельно, в
+[`visualizations/common/demo_rpm.h`](visualizations/common/demo_rpm.h), и
+подключается только прошивками визуализаций. Основная прошивка всегда берёт
+RPM из PT-CAN.
 
 ### Зафиксированная карта индикации
 

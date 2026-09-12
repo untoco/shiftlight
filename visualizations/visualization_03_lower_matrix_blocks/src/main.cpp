@@ -1,6 +1,7 @@
 #include <M5Chain.h>
 #include <M5Unified.h>
 #include "../../../include/shiftlight_config.h"
+#include "../../common/demo_rpm.h"
 
 namespace {
 
@@ -20,12 +21,12 @@ constexpr uint16_t kYellowCorner = 0x39E0;
 constexpr uint16_t kRed = 0xF800;
 constexpr uint16_t kRedCorner = 0x3800;
 
-constexpr uint16_t kMinTestRpm = ShiftlightConfig::kDemoRpm.minimum;
+constexpr uint16_t kMinTestRpm = VisualizationDemo::kRpm.minimum;
 constexpr uint16_t kRedlineRpm = ShiftlightConfig::kShiftPoints.redline;
-constexpr uint16_t kMaxTestRpm = ShiftlightConfig::kDemoRpm.maximum;
-constexpr uint16_t kRpmStep = ShiftlightConfig::kDemoRpm.step;
-constexpr uint32_t kRpmStepMs = ShiftlightConfig::kDemoRpm.stepIntervalMs;
-constexpr uint8_t kPeakHoldSteps = ShiftlightConfig::kDemoRpm.peakHoldSteps;
+constexpr uint16_t kMaxTestRpm = VisualizationDemo::kRpm.maximum;
+constexpr uint16_t kRpmStep = VisualizationDemo::kRpm.step;
+constexpr uint32_t kRpmStepMs = VisualizationDemo::kRpm.stepIntervalMs;
+constexpr uint8_t kPeakHoldSteps = VisualizationDemo::kRpm.peakHoldSteps;
 constexpr uint32_t kRedFlashHalfPeriodMs = 150;
 
 class FastChain : public Chain {

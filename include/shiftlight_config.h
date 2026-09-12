@@ -24,17 +24,6 @@ inline uint8_t stageForRpm(uint16_t rpm) {
   return 0;
 }
 
-struct DemoRpmSettings {
-  uint16_t minimum;
-  uint16_t maximum;
-  uint16_t step;
-  uint32_t stepIntervalMs;
-  uint8_t peakHoldSteps;
-};
-
-// Единый цикл оборотов для всех визуализаций.
-constexpr DemoRpmSettings kDemoRpm = {3000, 7000, 100, 75, 20};
-
 enum class VisualizationType : uint8_t {
   kCentralBlocks,
   kLowerBlocks,
