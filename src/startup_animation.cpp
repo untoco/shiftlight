@@ -12,18 +12,23 @@ constexpr uint8_t kCheckerSize = 2;
 constexpr uint32_t kFrameIntervalMs = 40;
 constexpr uint8_t kSupportedMatrixCount = 3;
 constexpr uint8_t kGroupsPerMatrix = kMatrixWidth / kCheckerSize;
+constexpr uint16_t kWhite = 0xFFFF;
+constexpr uint16_t kBlack = 0x0000;
+constexpr uint8_t kDitherPhases = 8;
+constexpr uint8_t kDitherOrder[kDitherPhases] = {0, 4, 2, 6, 1, 5, 3, 7};
 
 }  // namespace
-
-uint16_t grayscale(uint8_t intensity) {
-  return ((intensity >> 3) << 11) | ((intensity >> 2) << 5) | (intensity >> 3);
-}
 
 uint8_t fadeIntensity(uint32_t elapsedMs, uint32_t fadeDurationMs) {
   const uint32_t halfDurationMs = fadeDurationMs / 2;
   if (elapsedMs >= fadeDurationMs || halfDurationMs == 0) return 0;
   if (elapsedMs <= halfDurationMs) return (elapsedMs * 255) / halfDurationMs;
   return ((fadeDurationMs - elapsedMs) * 255) / halfDurationMs;
+}
+
+bool isDitherOn(uint8_t intensity, uint8_t phase) {
+  const uint8_t whiteFrames = (static_cast<uint16_t>(intensity) * kDitherPhases + 254) / 255;
+  return whiteFrames > kDitherOrder[phase % kDitherPhases];
 }
 
 void addCheckerSquare(RGBPixelInfo (&pixels)[kGroupsPerMatrix * kCheckerSize * kCheckerSize],
@@ -53,6 +58,7 @@ void playFinishFlagSweep(Chain& chain, const uint8_t* deviceIds, uint8_t matrixC
   const uint32_t startedAtMs = millis();
   while (millis() - startedAtMs < durationMs) {
     const uint32_t elapsedMs = millis() - startedAtMs;
+    const uint8_t ditherPhase = (elapsedMs / kFrameIntervalMs) % kDitherPhases;
 
     for (uint8_t matrix = 0; matrix < matrixCount; ++matrix) {
       RGBPixelInfo pixels[kGroupsPerMatrix * kCheckerSize * kCheckerSize] = {};
@@ -61,12 +67,14 @@ void playFinishFlagSweep(Chain& chain, const uint8_t* deviceIds, uint8_t matrixC
       for (uint8_t localGroup = 0; localGroup < kGroupsPerMatrix; ++localGroup) {
         const uint8_t checkerX = matrix * kGroupsPerMatrix + localGroup;
         const uint32_t groupStartMs = (checkerGroups - 1 - checkerX) * groupIntervalMs;
-        const uint8_t intensity = elapsedMs < groupStartMs
-                                      ? 0
-                                      : fadeIntensity(elapsedMs - groupStartMs, fadeDurationMs);
+        const uint8_t fade = elapsedMs < groupStartMs
+                                 ? 0
+                                 : fadeIntensity(elapsedMs - groupStartMs, fadeDurationMs);
+        const uint8_t intensity = isDitherOn(fade, ditherPhase + checkerX) ? 255 : 0;
         if (intensity == previousIntensity[matrix][localGroup]) continue;
 
-        addCheckerSquare(pixels, pixelCount, localGroup, checkerX % 2, grayscale(intensity));
+        addCheckerSquare(pixels, pixelCount, localGroup, checkerX % 2,
+                         intensity == 0 ? kBlack : kWhite);
         previousIntensity[matrix][localGroup] = intensity;
       }
       if (pixelCount > 0) {
