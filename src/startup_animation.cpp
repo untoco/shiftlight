@@ -10,6 +10,8 @@ constexpr uint8_t kMatrixHeight = 8;
 constexpr uint8_t kFlagStartY = 4;
 constexpr uint8_t kCheckerSize = 2;
 constexpr uint32_t kFrameIntervalMs = 40;
+constexpr uint8_t kSupportedMatrixCount = 3;
+constexpr uint8_t kGroupsPerMatrix = kMatrixWidth / kCheckerSize;
 
 }  // namespace
 
@@ -24,29 +26,52 @@ uint8_t fadeIntensity(uint32_t elapsedMs, uint32_t fadeDurationMs) {
   return ((fadeDurationMs - elapsedMs) * 255) / halfDurationMs;
 }
 
+void addCheckerSquare(RGBPixelInfo (&pixels)[kGroupsPerMatrix * kCheckerSize * kCheckerSize],
+                      uint8_t& pixelCount, uint8_t checkerX, uint8_t checkerY,
+                      uint16_t color) {
+  for (uint8_t y = 0; y < kCheckerSize; ++y) {
+    for (uint8_t x = 0; x < kCheckerSize; ++x) {
+      pixels[pixelCount++] = {static_cast<uint8_t>(checkerX * kCheckerSize + x),
+                               static_cast<uint8_t>(kFlagStartY + checkerY * kCheckerSize + y), color};
+    }
+  }
+}
+
 void playFinishFlagSweep(Chain& chain, const uint8_t* deviceIds, uint8_t matrixCount,
                          uint8_t* operationStatus, uint32_t durationMs) {
+  if (matrixCount > kSupportedMatrixCount) return;
+
   const uint8_t checkerGroups = (matrixCount * kMatrixWidth) / kCheckerSize;
   const uint32_t groupIntervalMs = durationMs / (checkerGroups + 3);
   const uint32_t fadeDurationMs = groupIntervalMs * 4;
+  uint8_t previousIntensity[kSupportedMatrixCount][kGroupsPerMatrix] = {};
 
-  for (uint32_t elapsedMs = 0; elapsedMs < durationMs; elapsedMs += kFrameIntervalMs) {
-    uint16_t frames[3][kMatrixWidth * kMatrixHeight] = {};
+  for (uint8_t matrix = 0; matrix < matrixCount; ++matrix) {
+    chain.setRGBClear(deviceIds[matrix], operationStatus);
+  }
+
+  const uint32_t startedAtMs = millis();
+  while (millis() - startedAtMs < durationMs) {
+    const uint32_t elapsedMs = millis() - startedAtMs;
 
     for (uint8_t matrix = 0; matrix < matrixCount; ++matrix) {
-      for (uint8_t y = kFlagStartY; y < kMatrixHeight; ++y) {
-        for (uint8_t x = 0; x < kMatrixWidth; ++x) {
-          const uint8_t checkerX = (matrix * kMatrixWidth + x) / kCheckerSize;
-          const uint8_t checkerY = (y - kFlagStartY) / kCheckerSize;
-          if ((checkerX + checkerY) % 2 != 0) continue;
+      RGBPixelInfo pixels[kGroupsPerMatrix * kCheckerSize * kCheckerSize] = {};
+      uint8_t pixelCount = 0;
 
-          const uint32_t groupStartMs = (checkerGroups - 1 - checkerX) * groupIntervalMs;
-          if (elapsedMs < groupStartMs) continue;
-          frames[matrix][y * kMatrixWidth + x] =
-              grayscale(fadeIntensity(elapsedMs - groupStartMs, fadeDurationMs));
-        }
+      for (uint8_t localGroup = 0; localGroup < kGroupsPerMatrix; ++localGroup) {
+        const uint8_t checkerX = matrix * kGroupsPerMatrix + localGroup;
+        const uint32_t groupStartMs = (checkerGroups - 1 - checkerX) * groupIntervalMs;
+        const uint8_t intensity = elapsedMs < groupStartMs
+                                      ? 0
+                                      : fadeIntensity(elapsedMs - groupStartMs, fadeDurationMs);
+        if (intensity == previousIntensity[matrix][localGroup]) continue;
+
+        addCheckerSquare(pixels, pixelCount, localGroup, checkerX % 2, grayscale(intensity));
+        previousIntensity[matrix][localGroup] = intensity;
       }
-      chain.setRGBBufferRefresh(deviceIds[matrix], frames[matrix], operationStatus);
+      if (pixelCount > 0) {
+        chain.setRGBPixel(deviceIds[matrix], pixels, pixelCount, operationStatus);
+      }
     }
     delay(kFrameIntervalMs);
   }
