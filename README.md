@@ -87,7 +87,7 @@ RPM более 200 мс матрицы гасятся, а экран показ�
 | 1 | M5Stack AtomS3R (ESP32-S3, встроенный 0.85" экран) | Единый контроллер: CAN-логика, fail-safe, Chain Bus master и экран диагностики/калибровки. |
 | 1 | M5Stack Atomic CAN Base (CA-IS3050G) | Изолированный физический интерфейс с BMW PT-CAN. Подключается снизу AtomS3R. |
 | 3 | M5Stack Chain RGB | Три каскадные RGB-матрицы 8×8; всего 192 LED. |
-| 1 | M5Stack Unbuckled Grove Cable, 1.0 м | Съёмный кабель AtomS3R → первая Chain RGB. |
+| 1 | M5Stack Unbuckled Grove Cable, 2.0 м | Съёмный кабель AtomS3R → первая Chain RGB. |
 | 2 | Chain Bridge | Соединяют матрицы `#1 → #2` и `#2 → #3`; входят в комплекты Chain RGB. |
 
 ## Сборка и прошивка
@@ -132,7 +132,7 @@ python3 -m venv .tooling/platformio
 | Интерфейс | Линии AtomS3R | Подключение |
 | --- | --- | --- |
 | Atomic CAN Base | G5 / G6 | Нижний разъём Atom; CAN-контроллер ESP32-S3 + CA-IS3050G. |
-| Chain RGB | Grove: G2 / G1 | Первая матрица через 1.0 м Grove-кабель, остальные `OUT → IN`. |
+| Chain RGB | Grove: G2 / G1 | Первая матрица через 2.0 м Grove-кабель, остальные `OUT → IN`. |
 
 ## Световая геометрия
 
