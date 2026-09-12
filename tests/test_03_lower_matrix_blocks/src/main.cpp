@@ -20,7 +20,7 @@ constexpr uint16_t kRed = 0xF800;
 constexpr uint16_t kRedCorner = 0x3800;
 
 constexpr uint16_t kMinTestRpm = 3000;
-constexpr uint16_t kRedlineRpm = 6200;
+constexpr uint16_t kRedlineRpm = 6500;
 constexpr uint16_t kMaxTestRpm = 7000;
 constexpr uint16_t kRpmStep = 100;
 constexpr uint32_t kRpmStepMs = 75;
@@ -117,10 +117,10 @@ bool initialiseMatrices() {
 
 uint8_t stageForRpm(uint16_t currentRpm) {
   if (currentRpm >= kRedlineRpm) return 5;
-  if (currentRpm >= 5600) return 4;
-  if (currentRpm >= 5000) return 3;
-  if (currentRpm >= 4400) return 2;
-  if (currentRpm >= 3800) return 1;
+  if (currentRpm >= 6200) return 4;
+  if (currentRpm >= 5500) return 3;
+  if (currentRpm >= 4800) return 2;
+  if (currentRpm >= 4100) return 1;
   return 0;
 }
 
