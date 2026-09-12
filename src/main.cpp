@@ -1,5 +1,6 @@
 #include <M5Chain.h>
 #include <M5Unified.h>
+#include <shiftlight_config.h>
 #include "driver/twai.h"
 
 namespace {
@@ -21,8 +22,9 @@ constexpr uint8_t kBrightnessPercent = 25;
 
 constexpr uint8_t kMatrixCount = 3;
 constexpr uint8_t kSectionSize = 4;
-constexpr uint8_t kSectionStartX = 2;
-constexpr uint8_t kSectionStartY = 4;
+constexpr uint8_t kSectionStartX = ShiftlightConfig::kVisualization.sectionStartX;
+constexpr uint8_t kSectionStartY = ShiftlightConfig::kVisualization.sectionStartY;
+constexpr uint8_t kRedlineStartY = ShiftlightConfig::kVisualization.redlineStartY;
 constexpr uint16_t kGreen = 0x07E0;
 constexpr uint16_t kGreenCorner = 0x01E0;
 constexpr uint16_t kYellow = 0xFFE0;
@@ -32,8 +34,8 @@ constexpr uint16_t kRedCorner = 0x3800;
 
 class FastChain : public Chain {
  public:
-  void setLowerSectionsPipelined(const uint8_t (&deviceIds)[kMatrixCount],
-                                 const uint16_t (&colors)[kMatrixCount]) {
+  void setSectionsPipelined(const uint8_t (&deviceIds)[kMatrixCount],
+                            const uint16_t (&colors)[kMatrixCount]) {
     if (!acquireMutex()) {
       return;
     }
@@ -152,22 +154,13 @@ bool initialiseMatrices() {
   return true;
 }
 
-uint8_t stageForRpm(uint16_t rpm) {
-  if (rpm >= 6200) return 5;
-  if (rpm >= 5600) return 4;
-  if (rpm >= 5000) return 3;
-  if (rpm >= 4400) return 2;
-  if (rpm >= 3800) return 1;
-  return 0;
-}
-
 uint16_t cornerColorFor(uint16_t color) {
   if (color == kGreen) return kGreenCorner;
   if (color == kYellow) return kYellowCorner;
   return kRedCorner;
 }
 
-void fillLowerSection(uint16_t (&frame)[64], uint16_t color) {
+void fillSection(uint16_t (&frame)[64], uint16_t color) {
   for (uint8_t y = kSectionStartY; y < kSectionStartY + kSectionSize; ++y) {
     for (uint8_t x = kSectionStartX; x < kSectionStartX + kSectionSize; ++x) {
       const bool corner = (x == kSectionStartX || x == kSectionStartX + kSectionSize - 1) &&
@@ -193,7 +186,7 @@ void renderRedline(bool flashOn) {
   if (!redlineModeActive) {
     uint16_t frames[kMatrixCount][64] = {};
     for (auto& frame : frames) {
-      for (uint8_t y = kSectionStartY; y < 8; ++y) {
+      for (uint8_t y = kRedlineStartY; y < 8; ++y) {
         for (uint8_t x = 0; x < 8; ++x) {
           frame[y * 8 + x] = kRed;
         }
@@ -223,10 +216,10 @@ void renderStage(uint8_t stage) {
 
   uint16_t frames[kMatrixCount][64] = {};
   if (stage == 1) {
-    fillLowerSection(frames[2], kGreen);
+    fillSection(frames[2], kGreen);
   } else if (stage == 2) {
-    fillLowerSection(frames[2], kGreen);
-    fillLowerSection(frames[1], kGreen);
+    fillSection(frames[2], kGreen);
+    fillSection(frames[1], kGreen);
   } else if (stage == 3 || stage == 4) {
     const uint16_t colors[kMatrixCount] = {
         stage == 3 ? kYellow : kRed,
@@ -234,11 +227,11 @@ void renderStage(uint8_t stage) {
         stage == 3 ? kGreen : kRed,
     };
     if (!wasRedlineMode) {
-      chain.setLowerSectionsPipelined(rgbDeviceIds, colors);
+      chain.setSectionsPipelined(rgbDeviceIds, colors);
       return;
     }
     for (uint8_t matrix = 0; matrix < kMatrixCount; ++matrix) {
-      fillLowerSection(frames[matrix], colors[matrix]);
+      fillSection(frames[matrix], colors[matrix]);
     }
   }
   sendFrames(frames);
@@ -319,7 +312,7 @@ void loop() {
   const bool rpmUpdated = readRpmFrames();
   const uint32_t now = millis();
   const bool rpmFresh = lastRpmFrameMs != 0 && now - lastRpmFrameMs <= kRpmTimeoutMs;
-  const uint8_t stage = rpmFresh ? stageForRpm(currentRpm) : 0;
+  const uint8_t stage = rpmFresh ? ShiftlightConfig::stageForRpm(currentRpm) : 0;
 
   if (stage != lastRenderedStage || stage == 5) {
     renderStage(stage);

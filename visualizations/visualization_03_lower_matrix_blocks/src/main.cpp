@@ -1,5 +1,6 @@
 #include <M5Chain.h>
 #include <M5Unified.h>
+#include "../../../include/shiftlight_config.h"
 
 namespace {
 
@@ -19,12 +20,12 @@ constexpr uint16_t kYellowCorner = 0x39E0;
 constexpr uint16_t kRed = 0xF800;
 constexpr uint16_t kRedCorner = 0x3800;
 
-constexpr uint16_t kMinTestRpm = 3000;
-constexpr uint16_t kRedlineRpm = 6500;
-constexpr uint16_t kMaxTestRpm = 7000;
-constexpr uint16_t kRpmStep = 100;
-constexpr uint32_t kRpmStepMs = 75;
-constexpr uint8_t kPeakHoldSteps = 20;
+constexpr uint16_t kMinTestRpm = ShiftlightConfig::kDemoRpm.minimum;
+constexpr uint16_t kRedlineRpm = ShiftlightConfig::kShiftPoints.redline;
+constexpr uint16_t kMaxTestRpm = ShiftlightConfig::kDemoRpm.maximum;
+constexpr uint16_t kRpmStep = ShiftlightConfig::kDemoRpm.step;
+constexpr uint32_t kRpmStepMs = ShiftlightConfig::kDemoRpm.stepIntervalMs;
+constexpr uint8_t kPeakHoldSteps = ShiftlightConfig::kDemoRpm.peakHoldSteps;
 constexpr uint32_t kRedFlashHalfPeriodMs = 150;
 
 class FastChain : public Chain {
@@ -113,15 +114,6 @@ bool initialiseMatrices() {
     chain.setRGBClear(id, &operationStatus);
   }
   return true;
-}
-
-uint8_t stageForRpm(uint16_t currentRpm) {
-  if (currentRpm >= kRedlineRpm) return 5;
-  if (currentRpm >= 6300) return 4;
-  if (currentRpm >= 5700) return 3;
-  if (currentRpm >= 5100) return 2;
-  if (currentRpm >= 4500) return 1;
-  return 0;
 }
 
 uint16_t cornerColorFor(uint16_t color) {
@@ -222,7 +214,7 @@ void renderScreen(uint8_t stage) {
 }
 
 void updateVisualisation() {
-  const uint8_t stage = stageForRpm(rpm);
+  const uint8_t stage = ShiftlightConfig::stageForRpm(rpm);
   if (stage != lastRenderedStage || stage == 5) {
     renderStage(stage);
     lastRenderedStage = stage;
@@ -252,7 +244,7 @@ void setup() {
   M5.Display.fillScreen(TFT_BLACK);
   M5.Display.setTextDatum(middle_center);
   M5.Display.setTextColor(TFT_YELLOW, TFT_BLACK);
-  M5.Display.drawString("TEST 03: LOWER", M5.Display.width() / 2, 64);
+  M5.Display.drawString("VISUAL 03: LOWER", M5.Display.width() / 2, 64);
 
   chain.begin(&Serial2, kChainBaudRate, kChainRxPin, kChainTxPin);
   if (!initialiseMatrices()) {
