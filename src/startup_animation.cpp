@@ -12,7 +12,12 @@ constexpr uint8_t kCheckerSize = 2;
 constexpr uint8_t kSupportedMatrixCount = 3;
 constexpr uint8_t kGroupsPerMatrix = kMatrixWidth / kCheckerSize;
 constexpr uint16_t kWhite = 0xFFFF;
-constexpr uint8_t kFadeLevels[] = {100, 80, 60, 40, 20, 0};
+constexpr uint16_t kLightGray = 0xBDF7;
+constexpr uint16_t kMidGray = 0x6B4D;
+// Слегка холодный тёмно-серый: меньшая доля красного компенсирует тёплый след LED.
+constexpr uint16_t kDarkCoolGray = 0x21CA;
+constexpr uint16_t kBlack = 0x0000;
+constexpr uint16_t kFadeColors[] = {kLightGray, kMidGray, kDarkCoolGray, kBlack};
 
 }  // namespace
 
@@ -35,7 +40,7 @@ void playFinishFlagSweep(Chain& chain, const uint8_t* deviceIds, uint8_t matrixC
   const uint8_t checkerGroups = (matrixCount * kMatrixWidth) / kCheckerSize;
   const uint32_t fillDurationMs = durationMs / 2;
   const uint32_t fadeDurationMs = durationMs - fillDurationMs;
-  const uint8_t fadeStepCount = sizeof(kFadeLevels) / sizeof(kFadeLevels[0]);
+  const uint8_t fadeStepCount = sizeof(kFadeColors) / sizeof(kFadeColors[0]);
 
   for (uint8_t matrix = 0; matrix < matrixCount; ++matrix) {
     chain.setRGBClear(deviceIds[matrix], operationStatus);
@@ -57,16 +62,24 @@ void playFinishFlagSweep(Chain& chain, const uint8_t* deviceIds, uint8_t matrixC
     if (nowMs < targetMs) delay(targetMs - nowMs);
   }
 
-  for (uint8_t step = 0; step < fadeStepCount; ++step) {
-    const uint8_t brightness = (static_cast<uint16_t>(maximumBrightness) * kFadeLevels[step]) / 100;
-    for (uint8_t matrix = 0; matrix < matrixCount; ++matrix) {
-      chain.setRGBBrightness(deviceIds[matrix], brightness, operationStatus);
-    }
+  uint32_t fadeStep = 0;
+  for (uint8_t group = 0; group < checkerGroups; ++group) {
+    const uint8_t checkerX = checkerGroups - 1 - group;
+    const uint8_t matrix = checkerX / kGroupsPerMatrix;
+    const uint8_t localGroup = checkerX % kGroupsPerMatrix;
 
-    const uint32_t targetMs = startedAtMs + fillDurationMs +
-                              (fadeDurationMs * (step + 1)) / fadeStepCount;
-    const uint32_t nowMs = millis();
-    if (nowMs < targetMs) delay(targetMs - nowMs);
+    for (uint16_t color : kFadeColors) {
+      RGBPixelInfo pixels[kGroupsPerMatrix * kCheckerSize * kCheckerSize] = {};
+      uint8_t pixelCount = 0;
+      addCheckerSquare(pixels, pixelCount, localGroup, checkerX % 2, color);
+      chain.setRGBPixel(deviceIds[matrix], pixels, pixelCount, operationStatus);
+      ++fadeStep;
+
+      const uint32_t targetMs = startedAtMs + fillDurationMs +
+                                (fadeDurationMs * fadeStep) / (checkerGroups * fadeStepCount);
+      const uint32_t nowMs = millis();
+      if (nowMs < targetMs) delay(targetMs - nowMs);
+    }
   }
 
   for (uint8_t matrix = 0; matrix < matrixCount; ++matrix) {
