@@ -9,27 +9,12 @@ constexpr uint8_t kMatrixWidth = 8;
 constexpr uint8_t kMatrixHeight = 8;
 constexpr uint8_t kFlagStartY = 4;
 constexpr uint8_t kCheckerSize = 2;
-constexpr uint32_t kFrameIntervalMs = 20;
 constexpr uint8_t kSupportedMatrixCount = 3;
 constexpr uint8_t kGroupsPerMatrix = kMatrixWidth / kCheckerSize;
 constexpr uint16_t kWhite = 0xFFFF;
-constexpr uint16_t kBlack = 0x0000;
-constexpr uint8_t kDitherPhases = 8;
-constexpr uint8_t kDitherOrder[kDitherPhases] = {0, 4, 2, 6, 1, 5, 3, 7};
+constexpr uint8_t kBrightnessLevels[] = {0, 35, 70, 100, 70, 35, 0};
 
 }  // namespace
-
-uint8_t fadeIntensity(uint32_t elapsedMs, uint32_t fadeDurationMs) {
-  const uint32_t halfDurationMs = fadeDurationMs / 2;
-  if (elapsedMs >= fadeDurationMs || halfDurationMs == 0) return 0;
-  if (elapsedMs <= halfDurationMs) return (elapsedMs * 255) / halfDurationMs;
-  return ((fadeDurationMs - elapsedMs) * 255) / halfDurationMs;
-}
-
-bool isDitherOn(uint8_t intensity, uint8_t phase) {
-  const uint8_t whiteFrames = (static_cast<uint16_t>(intensity) * kDitherPhases + 254) / 255;
-  return whiteFrames > kDitherOrder[phase % kDitherPhases];
-}
 
 void addCheckerSquare(RGBPixelInfo (&pixels)[kGroupsPerMatrix * kCheckerSize * kCheckerSize],
                       uint8_t& pixelCount, uint8_t checkerX, uint8_t checkerY,
@@ -43,49 +28,45 @@ void addCheckerSquare(RGBPixelInfo (&pixels)[kGroupsPerMatrix * kCheckerSize * k
 }
 
 void playFinishFlagSweep(Chain& chain, const uint8_t* deviceIds, uint8_t matrixCount,
-                         uint8_t* operationStatus, uint32_t durationMs) {
+                         uint8_t* operationStatus, uint32_t durationMs,
+                         uint8_t maximumBrightness) {
   if (matrixCount > kSupportedMatrixCount) return;
 
   const uint8_t checkerGroups = (matrixCount * kMatrixWidth) / kCheckerSize;
-  const uint32_t groupIntervalMs = durationMs / (checkerGroups + 3);
-  const uint32_t fadeDurationMs = groupIntervalMs * 4;
-  uint8_t previousIntensity[kSupportedMatrixCount][kGroupsPerMatrix] = {};
+  const uint8_t brightnessStepCount = sizeof(kBrightnessLevels) / sizeof(kBrightnessLevels[0]);
+  const uint32_t totalSteps = checkerGroups * brightnessStepCount;
 
   for (uint8_t matrix = 0; matrix < matrixCount; ++matrix) {
+    chain.setRGBBrightness(deviceIds[matrix], 0, operationStatus);
     chain.setRGBClear(deviceIds[matrix], operationStatus);
   }
 
   const uint32_t startedAtMs = millis();
-  while (millis() - startedAtMs < durationMs) {
-    const uint32_t elapsedMs = millis() - startedAtMs;
-    const uint8_t ditherPhase = (elapsedMs / kFrameIntervalMs) % kDitherPhases;
+  uint32_t step = 0;
+  for (uint8_t group = 0; group < checkerGroups; ++group) {
+    const uint8_t checkerX = checkerGroups - 1 - group;
+    const uint8_t matrix = checkerX / kGroupsPerMatrix;
+    const uint8_t localGroup = checkerX % kGroupsPerMatrix;
+    RGBPixelInfo pixels[kGroupsPerMatrix * kCheckerSize * kCheckerSize] = {};
+    uint8_t pixelCount = 0;
+    addCheckerSquare(pixels, pixelCount, localGroup, checkerX % 2, kWhite);
+    chain.setRGBPixel(deviceIds[matrix], pixels, pixelCount, operationStatus);
 
-    for (uint8_t matrix = 0; matrix < matrixCount; ++matrix) {
-      RGBPixelInfo pixels[kGroupsPerMatrix * kCheckerSize * kCheckerSize] = {};
-      uint8_t pixelCount = 0;
+    for (uint8_t level : kBrightnessLevels) {
+      const uint8_t brightness = (static_cast<uint16_t>(maximumBrightness) * level) / 100;
+      chain.setRGBBrightness(deviceIds[matrix], brightness, operationStatus);
+      ++step;
 
-      for (uint8_t localGroup = 0; localGroup < kGroupsPerMatrix; ++localGroup) {
-        const uint8_t checkerX = matrix * kGroupsPerMatrix + localGroup;
-        const uint32_t groupStartMs = (checkerGroups - 1 - checkerX) * groupIntervalMs;
-        const uint8_t fade = elapsedMs < groupStartMs
-                                 ? 0
-                                 : fadeIntensity(elapsedMs - groupStartMs, fadeDurationMs);
-        const uint8_t intensity = isDitherOn(fade, ditherPhase + checkerX) ? 255 : 0;
-        if (intensity == previousIntensity[matrix][localGroup]) continue;
-
-        addCheckerSquare(pixels, pixelCount, localGroup, checkerX % 2,
-                         intensity == 0 ? kBlack : kWhite);
-        previousIntensity[matrix][localGroup] = intensity;
-      }
-      if (pixelCount > 0) {
-        chain.setRGBPixel(deviceIds[matrix], pixels, pixelCount, operationStatus);
-      }
+      const uint32_t targetMs = startedAtMs + (durationMs * step) / totalSteps;
+      const uint32_t nowMs = millis();
+      if (nowMs < targetMs) delay(targetMs - nowMs);
     }
-    delay(kFrameIntervalMs);
+    chain.setRGBClear(deviceIds[matrix], operationStatus);
   }
 
   for (uint8_t matrix = 0; matrix < matrixCount; ++matrix) {
     chain.setRGBClear(deviceIds[matrix], operationStatus);
+    chain.setRGBBrightness(deviceIds[matrix], maximumBrightness, operationStatus);
   }
 }
 

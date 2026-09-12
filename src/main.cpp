@@ -305,7 +305,8 @@ void setup() {
 
   if (ShiftlightConfig::kShowStartupAnimation) {
     StartupAnimation::playFinishFlagSweep(chain, rgbDeviceIds, kMatrixCount, &operationStatus,
-                                          ShiftlightConfig::kStartupAnimationDurationMs);
+                                          ShiftlightConfig::kStartupAnimationDurationMs,
+                                          kBrightnessPercent);
   }
 
   renderStage(0);
