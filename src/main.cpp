@@ -2,6 +2,7 @@
 #include <M5Unified.h>
 #include <shiftlight_config.h>
 #include "driver/twai.h"
+#include "startup_animation.h"
 
 namespace {
 
@@ -300,6 +301,11 @@ void setup() {
   if (!initialiseMatrices()) {
     showFatal("CHAIN RGB ERROR", "Need 3 matrices");
     while (true) delay(250);
+  }
+
+  if (ShiftlightConfig::kShowStartupAnimation) {
+    StartupAnimation::showFinishFlag(chain, rgbDeviceIds, kMatrixCount, &operationStatus,
+                                     ShiftlightConfig::kStartupAnimationDurationMs);
   }
 
   renderStage(0);

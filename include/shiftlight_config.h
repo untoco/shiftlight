@@ -43,4 +43,8 @@ constexpr VisualizationSettings kVisualization =
         ? VisualizationSettings{2, 4, 4}
         : VisualizationSettings{2, 2, 0};
 
+// Стартовая индикация включается до ожидания кадров PT-CAN.
+constexpr bool kShowStartupAnimation = true;
+constexpr uint32_t kStartupAnimationDurationMs = 2000;
+
 }  // namespace ShiftlightConfig
