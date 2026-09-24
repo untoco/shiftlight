@@ -9,8 +9,6 @@ constexpr uint8_t kLedPin = 1;
 constexpr uint8_t kLedCount = 10;
 constexpr uint8_t kBrightness = 32;
 constexpr uint16_t kAllRedRpm = 6300;
-constexpr uint16_t kFlashRpm = 6600;
-constexpr uint32_t kRedFlashHalfPeriodMs = 150;
 
 constexpr uint16_t kThresholdRpm[kLedCount] = {
     4300, 4500, 4700, 4900, 5100, 5300, 5500, 5700, 5900, 6100,
@@ -25,28 +23,13 @@ uint16_t rpm = VisualizationDemo::kRpm.minimum;
 int8_t rpmDirection = 1;
 uint8_t peakHoldSteps = 0;
 uint32_t lastRpmStepMs = 0;
-uint32_t flashStartedMs = 0;
-bool flashActive = false;
 
-void renderStick(uint32_t now) {
-  if (rpm >= kFlashRpm) {
-    if (!flashActive) {
-      flashActive = true;
-      flashStartedMs = now;
-    }
-    const uint32_t color = ((now - flashStartedMs) / kRedFlashHalfPeriodMs) % 2 == 0
-                               ? 0xFF0000
-                               : 0;
-    for (uint8_t led = 0; led < kLedCount; ++led) {
-      strip.setPixelColor(led, led % 2 == 0 ? color : 0);
-    }
-  } else if (rpm >= kAllRedRpm) {
-    flashActive = false;
+void renderStick() {
+  if (rpm >= kAllRedRpm) {
     for (uint8_t led = 0; led < kLedCount; ++led) {
       strip.setPixelColor(led, 0xFF0000);
     }
   } else {
-    flashActive = false;
     for (uint8_t led = 0; led < kLedCount; ++led) {
       strip.setPixelColor(led, rpm >= kThresholdRpm[led] ? kLedColors[led] : 0);
     }
@@ -73,8 +56,8 @@ void renderScreen() {
   M5.Display.drawString("WS2813 STICK", M5.Display.width() / 2, 104);
 }
 
-void updateVisualisation(uint32_t now) {
-  renderStick(now);
+void updateVisualisation() {
+  renderStick();
   renderScreen();
   Serial.printf("RPM=%u\n", rpm);
 }
@@ -104,7 +87,7 @@ void setup() {
   strip.show();
 
   lastRpmStepMs = millis();
-  updateVisualisation(lastRpmStepMs);
+  updateVisualisation();
 }
 
 void loop() {
@@ -112,6 +95,6 @@ void loop() {
   if (now - lastRpmStepMs < VisualizationDemo::kRpm.stepIntervalMs) return;
 
   advanceRpm();
-  updateVisualisation(now);
+  updateVisualisation();
   lastRpmStepMs = now;
 }
