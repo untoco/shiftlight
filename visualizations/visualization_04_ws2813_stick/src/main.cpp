@@ -9,7 +9,7 @@ constexpr uint8_t kLedPin = 1;
 constexpr uint8_t kLedCount = 10;
 constexpr uint8_t kBrightness = 32;
 constexpr uint16_t kAllRedRpm = 6300;
-constexpr uint32_t kStartupOrange = 0xFF5000;
+constexpr uint32_t kStartupOrange = 0xC03800;
 constexpr uint16_t kStartupStepMs = 110;
 
 constexpr uint16_t kThresholdRpm[kLedCount] = {
