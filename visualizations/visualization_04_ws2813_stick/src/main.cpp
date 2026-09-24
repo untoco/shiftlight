@@ -9,6 +9,8 @@ constexpr uint8_t kLedPin = 1;
 constexpr uint8_t kLedCount = 10;
 constexpr uint8_t kBrightness = 32;
 constexpr uint16_t kAllRedRpm = 6300;
+constexpr uint32_t kStartupOrange = 0xFF5000;
+constexpr uint16_t kStartupStepMs = 110;
 
 constexpr uint16_t kThresholdRpm[kLedCount] = {
     4300, 4500, 4700, 4900, 5100, 5300, 5500, 5700, 5900, 6100,
@@ -23,6 +25,25 @@ uint16_t rpm = VisualizationDemo::kRpm.minimum;
 int8_t rpmDirection = 1;
 uint8_t peakHoldSteps = 0;
 uint32_t lastRpmStepMs = 0;
+
+void showStartupPair(uint8_t offset) {
+  strip.clear();
+  strip.setPixelColor(offset, kStartupOrange);
+  strip.setPixelColor(kLedCount - 1 - offset, kStartupOrange);
+  strip.show();
+  delay(kStartupStepMs);
+}
+
+void runStartupTest() {
+  for (uint8_t offset = 0; offset < kLedCount / 2; ++offset) {
+    showStartupPair(offset);
+  }
+  for (int8_t offset = kLedCount / 2 - 2; offset >= 0; --offset) {
+    showStartupPair(offset);
+  }
+  strip.clear();
+  strip.show();
+}
 
 void renderStick() {
   if (rpm >= kAllRedRpm) {
@@ -85,6 +106,7 @@ void setup() {
   strip.setBrightness(kBrightness);
   strip.clear();
   strip.show();
+  runStartupTest();
 
   lastRpmStepMs = millis();
   updateVisualisation();
