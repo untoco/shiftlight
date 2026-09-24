@@ -1,6 +1,6 @@
 #include <M5Chain.h>
 #include <M5Unified.h>
-#include "../../../include/shiftlight_config.h"
+#include "../matrix_config.h"
 #include "../../common/demo_rpm.h"
 
 namespace {

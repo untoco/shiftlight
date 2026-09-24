@@ -4,47 +4,36 @@
 
 namespace ShiftlightConfig {
 
-struct ShiftPoints {
-  uint16_t first;
-  uint16_t second;
-  uint16_t third;
-  uint16_t allRed;
-  uint16_t redline;
+constexpr uint8_t kLedPin = 1;  // Белый провод SIG стика в Grove-порту AtomS3R.
+constexpr uint8_t kLedCount = 10;
+constexpr uint8_t kBrightness = 32;
+constexpr uint16_t kLedThresholdRpm[kLedCount] = {
+    4300, 4500, 4700, 4900, 5100, 5300, 5500, 5700, 5900, 6100,
 };
+constexpr uint32_t kLedColors[kLedCount] = {
+    0x00FF00, 0x00FF00, 0x00FF00, 0x00FF00, 0x00FF00,
+    0xFFFF00, 0xFFFF00, 0xFFFF00, 0xFF0000, 0xFF0000,
+};
+constexpr uint16_t kAllRedRpm = 6300;
 
-// Рабочая карта переключений. Калибруется здесь, без изменения логики индикации.
-constexpr ShiftPoints kShiftPoints = {4500, 5100, 5700, 6300, 6500};
+constexpr bool kShowEngineStartAnimation = true;
+constexpr uint32_t kStartupOrange = 0xC03800;
+constexpr uint16_t kStartupStepMs = 110;
 
-inline uint8_t stageForRpm(uint16_t rpm) {
-  if (rpm >= kShiftPoints.redline) return 5;
-  if (rpm >= kShiftPoints.allRed) return 4;
-  if (rpm >= kShiftPoints.third) return 3;
-  if (rpm >= kShiftPoints.second) return 2;
-  if (rpm >= kShiftPoints.first) return 1;
-  return 0;
+// Предварительные границы для определения запуска по RPM; уточняются на машине.
+constexpr uint16_t kStoppedRpm = 100;
+constexpr uint16_t kRunningRpm = 400;
+constexpr uint32_t kStoppedConfirmMs = 1000;
+constexpr uint32_t kCrankingConfirmMs = 100;
+constexpr uint32_t kRunningConfirmMs = 150;
+constexpr uint32_t kRpmMissingResetMs = 2000;
+constexpr uint32_t kRpmTimeoutMs = 200;
+
+inline uint8_t litLedCount(uint16_t rpm) {
+  if (rpm >= kAllRedRpm) return kLedCount;
+  uint8_t count = 0;
+  while (count < kLedCount && rpm >= kLedThresholdRpm[count]) ++count;
+  return count;
 }
-
-enum class VisualizationType : uint8_t {
-  kCentralBlocks,
-  kLowerBlocks,
-};
-
-// Выбор геометрии основной прошивки.
-constexpr VisualizationType kVisualizationType = VisualizationType::kLowerBlocks;
-
-struct VisualizationSettings {
-  uint8_t sectionStartX;
-  uint8_t sectionStartY;
-  uint8_t redlineStartY;
-};
-
-constexpr VisualizationSettings kVisualization =
-    kVisualizationType == VisualizationType::kLowerBlocks
-        ? VisualizationSettings{2, 4, 4}
-        : VisualizationSettings{2, 2, 0};
-
-// Стартовая индикация включается до ожидания кадров PT-CAN.
-constexpr bool kShowStartupAnimation = true;
-constexpr uint32_t kStartupAnimationDurationMs = 2000;
 
 }  // namespace ShiftlightConfig

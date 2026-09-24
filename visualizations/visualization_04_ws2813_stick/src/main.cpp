@@ -1,61 +1,34 @@
-#include <Adafruit_NeoPixel.h>
 #include <M5Unified.h>
+#include <shiftlight_config.h>
+#include <stick_display.h>
 
 #include "../../common/demo_rpm.h"
 
 namespace {
 
-constexpr uint8_t kLedPin = 1;
-constexpr uint8_t kLedCount = 10;
-constexpr uint8_t kBrightness = 32;
-constexpr uint16_t kAllRedRpm = 6300;
-constexpr uint32_t kStartupOrange = 0xC03800;
-constexpr uint16_t kStartupStepMs = 110;
-
-constexpr uint16_t kThresholdRpm[kLedCount] = {
-    4300, 4500, 4700, 4900, 5100, 5300, 5500, 5700, 5900, 6100,
-};
-constexpr uint32_t kLedColors[kLedCount] = {
-    0x00FF00, 0x00FF00, 0x00FF00, 0x00FF00, 0x00FF00,
-    0xFFFF00, 0xFFFF00, 0xFFFF00, 0xFF0000, 0xFF0000,
-};
-
-Adafruit_NeoPixel strip(kLedCount, kLedPin, NEO_GRB + NEO_KHZ800);
+Shiftlight::StickDisplay stick;
 uint16_t rpm = VisualizationDemo::kRpm.minimum;
 int8_t rpmDirection = 1;
 uint8_t peakHoldSteps = 0;
 uint32_t lastRpmStepMs = 0;
 
 void showStartupPair(uint8_t offset) {
-  strip.clear();
-  strip.setPixelColor(offset, kStartupOrange);
-  strip.setPixelColor(kLedCount - 1 - offset, kStartupOrange);
-  strip.show();
-  delay(kStartupStepMs);
+  stick.showStartupPair(offset);
+  delay(ShiftlightConfig::kStartupStepMs);
 }
 
 void runStartupTest() {
-  for (uint8_t offset = 0; offset < kLedCount / 2; ++offset) {
+  for (uint8_t offset = 0; offset < ShiftlightConfig::kLedCount / 2; ++offset) {
     showStartupPair(offset);
   }
-  for (int8_t offset = kLedCount / 2 - 2; offset >= 0; --offset) {
+  for (int8_t offset = ShiftlightConfig::kLedCount / 2 - 2; offset >= 0; --offset) {
     showStartupPair(offset);
   }
-  strip.clear();
-  strip.show();
+  stick.clear();
 }
 
 void renderStick() {
-  if (rpm >= kAllRedRpm) {
-    for (uint8_t led = 0; led < kLedCount; ++led) {
-      strip.setPixelColor(led, 0xFF0000);
-    }
-  } else {
-    for (uint8_t led = 0; led < kLedCount; ++led) {
-      strip.setPixelColor(led, rpm >= kThresholdRpm[led] ? kLedColors[led] : 0);
-    }
-  }
-  strip.show();
+  stick.showRpm(rpm);
 }
 
 void renderScreen() {
@@ -69,8 +42,9 @@ void renderScreen() {
   M5.Display.setTextSize(M5.Display.width() / M5.Display.textWidth(rpmText));
   M5.Display.drawString(rpmText, M5.Display.width() / 2, 45);
 
-  M5.Display.setTextColor(rpm >= kThresholdRpm[8] ? TFT_RED
-                          : rpm >= kThresholdRpm[5] ? TFT_YELLOW : TFT_GREEN,
+  M5.Display.setTextColor(rpm >= ShiftlightConfig::kLedThresholdRpm[8] ? TFT_RED
+                          : rpm >= ShiftlightConfig::kLedThresholdRpm[5] ? TFT_YELLOW
+                                                                           : TFT_GREEN,
                           TFT_BLACK);
   M5.Display.setTextSize(1);
   M5.Display.drawString("RPM", M5.Display.width() / 2, 79);
@@ -102,10 +76,7 @@ void setup() {
   Serial.begin(115200);
   delay(200);
 
-  strip.begin();
-  strip.setBrightness(kBrightness);
-  strip.clear();
-  strip.show();
+  stick.begin();
   runStartupTest();
 
   lastRpmStepMs = millis();
