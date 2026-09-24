@@ -8,9 +8,11 @@ namespace {
 constexpr uint8_t kLedPin = 1;
 constexpr uint8_t kLedCount = 10;
 constexpr uint8_t kBrightness = 64;
+constexpr uint16_t kFlashRpm = 6500;
+constexpr uint32_t kRedFlashHalfPeriodMs = 150;
 
 constexpr uint16_t kThresholdRpm[kLedCount] = {
-    4700, 4900, 5100, 5300, 5500, 5700, 5900, 6100, 6300, 6500,
+    4500, 4700, 4900, 5100, 5300, 5500, 5700, 5900, 6100, 6300,
 };
 constexpr uint32_t kLedColors[kLedCount] = {
     0x00FF00, 0x00FF00, 0x00FF00, 0x00FF00, 0x00FF00,
@@ -22,10 +24,26 @@ uint16_t rpm = VisualizationDemo::kRpm.minimum;
 int8_t rpmDirection = 1;
 uint8_t peakHoldSteps = 0;
 uint32_t lastRpmStepMs = 0;
+uint32_t flashStartedMs = 0;
+bool flashActive = false;
 
-void renderStick() {
-  for (uint8_t led = 0; led < kLedCount; ++led) {
-    strip.setPixelColor(led, rpm >= kThresholdRpm[led] ? kLedColors[led] : 0);
+void renderStick(uint32_t now) {
+  if (rpm >= kFlashRpm) {
+    if (!flashActive) {
+      flashActive = true;
+      flashStartedMs = now;
+    }
+    const uint32_t color = ((now - flashStartedMs) / kRedFlashHalfPeriodMs) % 2 == 0
+                               ? 0xFF0000
+                               : 0;
+    for (uint8_t led = 0; led < kLedCount; ++led) {
+      strip.setPixelColor(led, color);
+    }
+  } else {
+    flashActive = false;
+    for (uint8_t led = 0; led < kLedCount; ++led) {
+      strip.setPixelColor(led, rpm >= kThresholdRpm[led] ? kLedColors[led] : 0);
+    }
   }
   strip.show();
 }
@@ -41,15 +59,16 @@ void renderScreen() {
   M5.Display.setTextSize(M5.Display.width() / M5.Display.textWidth(rpmText));
   M5.Display.drawString(rpmText, M5.Display.width() / 2, 45);
 
-  M5.Display.setTextColor(rpm >= 6300 ? TFT_RED : rpm >= 5700 ? TFT_YELLOW : TFT_GREEN,
+  M5.Display.setTextColor(rpm >= kThresholdRpm[8] ? TFT_RED
+                          : rpm >= kThresholdRpm[5] ? TFT_YELLOW : TFT_GREEN,
                           TFT_BLACK);
   M5.Display.setTextSize(1);
   M5.Display.drawString("RPM", M5.Display.width() / 2, 79);
   M5.Display.drawString("WS2813 STICK", M5.Display.width() / 2, 104);
 }
 
-void updateVisualisation() {
-  renderStick();
+void updateVisualisation(uint32_t now) {
+  renderStick(now);
   renderScreen();
   Serial.printf("RPM=%u\n", rpm);
 }
@@ -78,8 +97,8 @@ void setup() {
   strip.clear();
   strip.show();
 
-  updateVisualisation();
   lastRpmStepMs = millis();
+  updateVisualisation(lastRpmStepMs);
 }
 
 void loop() {
@@ -87,6 +106,6 @@ void loop() {
   if (now - lastRpmStepMs < VisualizationDemo::kRpm.stepIntervalMs) return;
 
   advanceRpm();
-  updateVisualisation();
+  updateVisualisation(now);
   lastRpmStepMs = now;
 }
