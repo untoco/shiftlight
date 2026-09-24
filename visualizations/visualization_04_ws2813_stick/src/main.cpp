@@ -38,7 +38,7 @@ void renderStick(uint32_t now) {
                                ? 0xFF0000
                                : 0;
     for (uint8_t led = 0; led < kLedCount; ++led) {
-      strip.setPixelColor(led, color);
+      strip.setPixelColor(led, led % 2 == 0 ? color : 0);
     }
   } else if (rpm >= kAllRedRpm) {
     flashActive = false;
