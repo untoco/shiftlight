@@ -140,7 +140,8 @@ python3 -m venv .tooling/platformio
 
 Визуализации хранятся отдельно: [`Визуализация 01`](visualizations/visualization_01_three_matrix_redline),
 [`Визуализация 02`](visualizations/visualization_02_three_matrix_blocks) и
-[`Визуализация 03`](visualizations/visualization_03_lower_matrix_blocks). Сейчас по умолчанию
+[`Визуализация 03`](visualizations/visualization_03_lower_matrix_blocks),
+[`Визуализация 04`](visualizations/visualization_04_ws2813_stick). Сейчас по умолчанию
 собирается основная прошивка из [`src/main.cpp`](src/main.cpp). Для запуска
 визуализации в [`platformio.ini`](platformio.ini) временно меняется `src_dir`;
 команды остаются теми же.
