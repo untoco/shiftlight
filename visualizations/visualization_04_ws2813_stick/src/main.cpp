@@ -7,7 +7,7 @@ namespace {
 
 constexpr uint8_t kLedPin = 1;
 constexpr uint8_t kLedCount = 10;
-constexpr uint8_t kBrightness = 64;
+constexpr uint8_t kBrightness = 32;
 constexpr uint16_t kFlashRpm = 6500;
 constexpr uint32_t kRedFlashHalfPeriodMs = 150;
 
