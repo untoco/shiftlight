@@ -8,11 +8,12 @@ namespace {
 constexpr uint8_t kLedPin = 1;
 constexpr uint8_t kLedCount = 10;
 constexpr uint8_t kBrightness = 32;
-constexpr uint16_t kFlashRpm = 6500;
+constexpr uint16_t kAllRedRpm = 6300;
+constexpr uint16_t kFlashRpm = 6600;
 constexpr uint32_t kRedFlashHalfPeriodMs = 150;
 
 constexpr uint16_t kThresholdRpm[kLedCount] = {
-    4500, 4700, 4900, 5100, 5300, 5500, 5700, 5900, 6100, 6300,
+    4300, 4500, 4700, 4900, 5100, 5300, 5500, 5700, 5900, 6100,
 };
 constexpr uint32_t kLedColors[kLedCount] = {
     0x00FF00, 0x00FF00, 0x00FF00, 0x00FF00, 0x00FF00,
@@ -38,6 +39,11 @@ void renderStick(uint32_t now) {
                                : 0;
     for (uint8_t led = 0; led < kLedCount; ++led) {
       strip.setPixelColor(led, color);
+    }
+  } else if (rpm >= kAllRedRpm) {
+    flashActive = false;
+    for (uint8_t led = 0; led < kLedCount; ++led) {
+      strip.setPixelColor(led, 0xFF0000);
     }
   } else {
     flashActive = false;
