@@ -29,7 +29,8 @@ class StickDisplay {
                                  : rpm >= ShiftlightConfig::kLedThresholdRpm[led]
                                        ? ShiftlightConfig::kLedColors[led]
                                        : 0;
-      pixels_.setPixelColor(led, color);
+      // Порог 4300 RPM начинается с дальнего от входного разъёма конца стика.
+      pixels_.setPixelColor(ShiftlightConfig::kLedCount - 1 - led, color);
     }
     pixels_.show();
   }
